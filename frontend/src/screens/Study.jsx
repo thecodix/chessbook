@@ -1,0 +1,458 @@
+import { useState, useEffect, useRef, useCallback } from 'react'
+import Board from '../components/Board'
+import { OPENING_LIST, OPENINGS } from '../utils/repertoire'
+import { buildHistory, fenToBoard, START_FEN } from '../utils/chess'
+import { getRepertoire, submitReview } from '../utils/api'
+
+function useBoardSize(ref) {
+  const [size, setSize] = useState(480)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const ro = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect
+      setSize(Math.max(200, Math.floor(Math.min(width, height))))
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [ref])
+  return size
+}
+
+function retentionColor(n) {
+  if (n >= 80) return 'var(--green)'
+  if (n >= 60) return 'var(--amber)'
+  return 'var(--red)'
+}
+
+function changedSquares(prev, cur) {
+  if (!prev || !cur) return []
+  const sqs = []
+  for (let r = 0; r < 8; r++)
+    for (let c = 0; c < 8; c++)
+      if (prev[r][c] !== cur[r][c]) sqs.push([r, c])
+  return sqs
+}
+
+// Convert API response to internal format
+function apiToOpenings(apiData) {
+  const openingsMap = {}
+  const openingList = []
+  for (const o of apiData) {
+    const retention = o.lines.length
+      ? Math.round(o.lines.reduce((s, l) => s + (l.retention ?? 50), 0) / o.lines.length)
+      : 50
+    openingsMap[o.id] = {
+      name: o.name,
+      color: o.color,
+      description: o.description,
+      retention,
+      lines: o.lines.map(l => ({
+        id: l.id,
+        label: l.label,
+        moves: l.moves,
+        idea: l.idea,
+        retention: l.retention ?? 50,
+        intervalDays: l.intervalDays ?? 1,
+        nextReview: l.nextReview,
+      })),
+    }
+    openingList.push({ key: o.id, name: o.name, color: o.color, retention })
+  }
+  return { openingsMap, openingList }
+}
+
+function SidebarItem({ opening, active, onClick }) {
+  return (
+    <div className={`opening-item${active ? ' active' : ''}`} onClick={onClick}>
+      <div className="oi-name">
+        <span
+          className="oi-dot"
+          style={{ background: opening.color === 'white' ? '#ccc' : '#333', border: '1px solid #555' }}
+        />
+        {opening.name}
+      </div>
+      <div className="oi-meta">
+        <span>{/* lines count hidden until loaded */}</span>
+        <span style={{ color: retentionColor(opening.retention) }}>{opening.retention}%</span>
+      </div>
+    </div>
+  )
+}
+
+const QUALITY_BTNS = [
+  { label: 'Again', quality: 1, color: 'var(--red)',    bg: 'rgba(226,75,74,.12)',  border: 'rgba(226,75,74,.3)' },
+  { label: 'Hard',  quality: 3, color: 'var(--amber)',  bg: 'rgba(255,181,0,.10)',  border: 'rgba(255,181,0,.3)' },
+  { label: 'Good',  quality: 4, color: 'var(--green)',  bg: 'rgba(29,158,117,.12)', border: 'rgba(29,158,117,.3)' },
+  { label: 'Easy',  quality: 5, color: 'var(--purple)', bg: 'rgba(160,70,210,.10)', border: 'rgba(160,70,210,.3)' },
+]
+
+export default function Study() {
+  // Openings state — initialized from static, replaced by API when available
+  const [openingList, setOpeningList] = useState(
+    OPENING_LIST.map(o => ({ ...o, retention: OPENINGS[o.key]?.retention ?? 50 }))
+  )
+  const [openingsMap, setOpeningsMap] = useState(OPENINGS)
+  const [apiLoaded, setApiLoaded] = useState(false)
+
+  const [selectedKey, setSelectedKey]         = useState(OPENING_LIST[0].key)
+  const [selectedLineIdx, setSelectedLineIdx] = useState(0)
+  const [mode, setMode]                       = useState('study')
+  const [step, setStep]                       = useState(0)
+  const [history, setHistory]                 = useState([])
+  const [feedback, setFeedback]               = useState(null)
+  const [done, setDone]                       = useState(false)
+  const [reviewResult, setReviewResult]       = useState(null) // { intervalDays, nextReview }
+  const [reviewing, setReviewing]             = useState(false)
+
+  const boardWrapRef = useRef(null)
+  const boardSize    = useBoardSize(boardWrapRef)
+
+  // Load from API
+  useEffect(() => {
+    getRepertoire()
+      .then(data => {
+        if (!data?.length) return
+        const { openingsMap: om, openingList: ol } = apiToOpenings(data)
+        setOpeningsMap(om)
+        setOpeningList(ol)
+        setSelectedKey(ol[0].key)
+        setApiLoaded(true)
+      })
+      .catch(console.warn)
+  }, [])
+
+  const opening     = openingsMap[selectedKey]
+  const line        = opening?.lines?.[selectedLineIdx]
+  const totalMoves  = line?.moves?.length ?? 0
+  const playerColor = opening?.color || 'white'
+  const isPlayerTurn = mode === 'drill' && !done && !feedback &&
+    (step % 2 === 0) === (playerColor === 'white')
+
+  useEffect(() => {
+    if (!line) return
+    setHistory(buildHistory(line.moves))
+    setStep(0)
+    setFeedback(null)
+    setDone(false)
+    setReviewResult(null)
+    setMode('study')
+  }, [selectedKey, selectedLineIdx])
+
+  // Opponent auto-response
+  useEffect(() => {
+    if (mode !== 'drill' || done || feedback || !line || step >= totalMoves) return
+    if (!isPlayerTurn) {
+      const t = setTimeout(() => setStep(s => s + 1), 700)
+      return () => clearTimeout(t)
+    }
+  }, [step, isPlayerTurn, mode, done, feedback, line, totalMoves])
+
+  // Keyboard navigation
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.target.tagName === 'INPUT') return
+      if (mode === 'study') {
+        if (e.key === 'ArrowRight') setStep(s => Math.min(totalMoves, s + 1))
+        if (e.key === 'ArrowLeft')  setStep(s => Math.max(0, s - 1))
+      }
+      if (e.key === 'Escape' && mode === 'drill') enterStudy()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [mode, totalMoves])
+
+  const handleMove = useCallback((fromR, fromC, toR, toC) => {
+    if (!isPlayerTurn || step >= totalMoves) return
+    const cur  = history[step]
+    const next = history[step + 1]
+    if (!cur || !next) return
+
+    const piece       = cur[fromR][fromC]
+    const matchesDest = next[toR][toC] === piece
+    const srcCleared  = next[fromR][fromC] === null || (fromR === toR && fromC === toC)
+
+    if (piece && matchesDest && (srcCleared || fromR !== toR || fromC !== toC)) {
+      setFeedback('correct')
+      setTimeout(() => {
+        setFeedback(null)
+        const nextStep = step + 1
+        if (nextStep >= totalMoves) setDone(true)
+        else setStep(nextStep)
+      }, 500)
+    } else {
+      setFeedback('wrong')
+      setTimeout(() => setFeedback(null), 900)
+    }
+  }, [history, step, totalMoves, isPlayerTurn])
+
+  const handleRate = async (quality) => {
+    if (reviewing) return
+    setReviewing(true)
+    try {
+      if (apiLoaded && line?.id) {
+        const res = await submitReview(selectedKey, line.id, quality)
+        setReviewResult({ intervalDays: res.intervalDays, nextReview: res.nextReview })
+        // Update local retention
+        setOpeningsMap(prev => {
+          const updated = { ...prev }
+          const op = { ...updated[selectedKey] }
+          const lines = [...op.lines]
+          lines[selectedLineIdx] = { ...lines[selectedLineIdx], retention: res.retention }
+          op.lines = lines
+          op.retention = Math.round(lines.reduce((s, l) => s + (l.retention ?? 50), 0) / lines.length)
+          updated[selectedKey] = op
+          return updated
+        })
+      } else {
+        setReviewResult({ intervalDays: quality >= 3 ? 6 : 1, nextReview: null })
+      }
+    } catch (e) {
+      console.warn('submitReview failed', e)
+      setReviewResult({ intervalDays: null, nextReview: null })
+    } finally {
+      setReviewing(false)
+    }
+  }
+
+  const enterDrill = () => { setStep(0); setFeedback(null); setDone(false); setReviewResult(null); setMode('drill') }
+  const enterStudy = () => { setStep(0); setFeedback(null); setDone(false); setReviewResult(null); setMode('study') }
+  const selectOpening = (key) => { setSelectedKey(key); setSelectedLineIdx(0) }
+
+  const board        = history[step]     || fenToBoard(START_FEN)
+  const prevBoard    = history[step - 1] || null
+  const highlightSqs = step > 0 ? changedSquares(prevBoard, board) : []
+
+  const prevMove  = step > 0 ? line?.moves[step - 1] : null
+  const moveLabel = prevMove
+    ? `${Math.floor((step - 1) / 2) + 1}${(step - 1) % 2 === 0 ? '.' : '…'} ${prevMove}`
+    : 'Start'
+
+  let statusText = '', statusColor = 'var(--text4)'
+  if (mode === 'study') {
+    statusText = step === 0 ? 'Study mode — click a move or use ← →' : `Move ${step} / ${totalMoves}`
+  } else if (done) {
+    statusText = 'Line complete!'; statusColor = 'var(--green)'
+  } else if (feedback === 'correct') {
+    statusText = 'Correct!'; statusColor = 'var(--green)'
+  } else if (feedback === 'wrong') {
+    statusText = `Wrong — the move is ${line?.moves[step]}`; statusColor = 'var(--red)'
+  } else if (isPlayerTurn) {
+    statusText = `Your turn (${playerColor})`; statusColor = 'var(--text2)'
+  } else {
+    statusText = 'Opponent responding…'
+  }
+
+  return (
+    <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+
+      {/* ── Sidebar ── */}
+      <div className="sidebar">
+        <div className="sidebar-head">
+          <span style={{ fontSize: 13, fontWeight: 500 }}>Openings</span>
+        </div>
+        <div className="sidebar-section">White</div>
+        {openingList.filter(o => openingsMap[o.key]?.color === 'white').map(o => (
+          <SidebarItem key={o.key} opening={{ ...o, ...openingsMap[o.key] }} active={selectedKey === o.key} onClick={() => selectOpening(o.key)} />
+        ))}
+        <div className="sidebar-section">Black</div>
+        {openingList.filter(o => openingsMap[o.key]?.color === 'black').map(o => (
+          <SidebarItem key={o.key} opening={{ ...o, ...openingsMap[o.key] }} active={selectedKey === o.key} onClick={() => selectOpening(o.key)} />
+        ))}
+      </div>
+
+      {/* ── Board area ── */}
+      <div className="board-area" style={{ padding: 12, gap: 10 }}>
+        <div
+          ref={boardWrapRef}
+          style={{ flex: 1, minHeight: 0, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Board
+            board={board}
+            size={boardSize}
+            flipped={playerColor === 'black'}
+            highlightSqs={highlightSqs}
+            onMove={handleMove}
+            interactive={isPlayerTurn}
+            layers={{ attacks: false, coverage: false, targets: true, hanging: false, winning: false, selection: true }}
+          />
+        </div>
+
+        {/* Drill progress bar */}
+        {mode === 'drill' && (
+          <div style={{ width: '100%', maxWidth: boardSize }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text4)', marginBottom: 4 }}>
+              <span>Progress</span>
+              <span>{step} / {totalMoves}</span>
+            </div>
+            <div className="pbar-track" style={{ height: 5 }}>
+              <div
+                className="pbar-fill"
+                style={{
+                  width: `${totalMoves ? (step / totalMoves) * 100 : 0}%`,
+                  background: done ? 'var(--green)' : 'var(--green-dim)',
+                  transition: 'width .3s',
+                }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Controls row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', maxWidth: boardSize }}>
+          <div className="board-controls" style={{ flex: 1 }}>
+            <button className="bc-btn" onClick={() => setStep(s => Math.max(0, s - 1))} disabled={mode === 'drill'}>‹</button>
+            <div className="mv-display">{moveLabel}</div>
+            <button className="bc-btn" onClick={() => setStep(s => Math.min(totalMoves, s + 1))} disabled={mode === 'drill'}>›</button>
+          </div>
+
+          <button
+            onClick={mode === 'study' ? enterDrill : enterStudy}
+            style={{
+              padding: '6px 16px', borderRadius: 7, fontSize: 13, fontFamily: 'inherit',
+              cursor: 'pointer', fontWeight: 500, transition: 'all .15s',
+              background: mode === 'drill' ? 'var(--green-bg)' : 'var(--bg2)',
+              border: `0.5px solid ${mode === 'drill' ? 'var(--green-border)' : 'var(--border)'}`,
+              color: mode === 'drill' ? 'var(--green)' : 'var(--text2)',
+            }}
+          >
+            {mode === 'study' ? '▶  Drill' : '←  Study'}
+          </button>
+        </div>
+
+        <div style={{ fontSize: 13, color: statusColor, minHeight: 20, textAlign: 'center' }}>
+          {statusText}
+        </div>
+
+        {/* SM-2 rating buttons — shown when drill is complete and no review result yet */}
+        {done && mode === 'drill' && !reviewResult && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: '100%', maxWidth: boardSize }}>
+            <div style={{ fontSize: 12, color: 'var(--text4)' }}>How well did you remember this line?</div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {QUALITY_BTNS.map(btn => (
+                <button
+                  key={btn.label}
+                  disabled={reviewing}
+                  onClick={() => handleRate(btn.quality)}
+                  style={{
+                    padding: '7px 16px', borderRadius: 7, fontSize: 13, fontFamily: 'inherit',
+                    cursor: 'pointer', fontWeight: 500,
+                    color: btn.color, background: btn.bg, border: `0.5px solid ${btn.border}`,
+                    opacity: reviewing ? 0.5 : 1,
+                  }}
+                >
+                  {btn.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Review result */}
+        {reviewResult && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, width: '100%', maxWidth: boardSize }}>
+            <div style={{ fontSize: 13, color: 'var(--green)' }}>
+              {reviewResult.intervalDays != null
+                ? `Next review in ${reviewResult.intervalDays} day${reviewResult.intervalDays !== 1 ? 's' : ''}`
+                : 'Review saved'}
+              {reviewResult.nextReview ? ` · ${reviewResult.nextReview}` : ''}
+            </div>
+            <button className="btn-green" style={{ width: 200 }} onClick={enterDrill}>
+              Drill again
+            </button>
+          </div>
+        )}
+
+        {done && mode === 'drill' && !reviewResult && (
+          <button className="btn-green" style={{ width: 200 }} onClick={enterDrill}>
+            Drill again
+          </button>
+        )}
+      </div>
+
+      {/* ── Right panel ── */}
+      <div className="rpanel">
+        <div className="rps">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <div className="rpl" style={{ marginBottom: 0 }}>{opening?.name}</div>
+            <span className={`tag ${opening?.color === 'white' ? 'tag-green' : 'tag-amber'}`}>{opening?.color}</span>
+          </div>
+
+          {/* Line tabs */}
+          {opening && opening.lines?.length > 1 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 10 }}>
+              {opening.lines.map((l, i) => (
+                <button
+                  key={i}
+                  onClick={() => setSelectedLineIdx(i)}
+                  style={{
+                    textAlign: 'left', padding: '5px 8px', borderRadius: 6, fontSize: 12,
+                    fontFamily: 'inherit', cursor: 'pointer',
+                    background: selectedLineIdx === i ? 'var(--green-bg)' : 'transparent',
+                    border: `0.5px solid ${selectedLineIdx === i ? 'var(--green-border)' : 'transparent'}`,
+                    color: selectedLineIdx === i ? 'var(--green)' : 'var(--text3)',
+                  }}
+                >
+                  {l.label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Move list */}
+          <div className="varpath">
+            {line?.moves?.map((mv, i) => (
+              <span
+                key={i}
+                className={`vpm${i === step - 1 ? ' cur' : ''}`}
+                onClick={() => { if (mode === 'study') setStep(i + 1) }}
+                style={{ cursor: mode === 'study' ? 'pointer' : 'default' }}
+              >
+                {i % 2 === 0 && (
+                  <span style={{ color: 'var(--text4)', marginRight: 2 }}>{Math.floor(i / 2) + 1}.</span>
+                )}
+                {mv}{' '}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {line?.idea && (
+          <div className="rps">
+            <div className="rpl">Idea</div>
+            <div style={{ fontSize: 12, color: 'var(--text3)', lineHeight: 1.7 }}>{line.idea}</div>
+          </div>
+        )}
+
+        {opening?.description && (
+          <div className="rps">
+            <div className="rpl">About</div>
+            <div style={{ fontSize: 12, color: 'var(--text4)', lineHeight: 1.7 }}>{opening.description}</div>
+          </div>
+        )}
+
+        {/* Per-line SM-2 stats */}
+        {line && (
+          <div className="rps">
+            <div className="rpl">Schedule</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: 'var(--text4)' }}>
+              {line.nextReview && <div>Next review: <span style={{ color: 'var(--text2)' }}>{line.nextReview}</span></div>}
+              {line.intervalDays != null && <div>Interval: <span style={{ color: 'var(--text2)' }}>{line.intervalDays}d</span></div>}
+            </div>
+          </div>
+        )}
+
+        <div className="rps" style={{ marginTop: 'auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text4)', marginBottom: 5 }}>
+            <span>Retention</span>
+            <span style={{ color: retentionColor(opening?.retention) }}>{opening?.retention}%</span>
+          </div>
+          <div className="pbar-track">
+            <div className="pbar-fill" style={{ width: `${opening?.retention ?? 0}%`, background: retentionColor(opening?.retention) }} />
+          </div>
+        </div>
+      </div>
+
+    </div>
+  )
+}
