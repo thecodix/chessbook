@@ -132,50 +132,37 @@ chessbook/
 
 ## ROADMAP — what's left
 
-### High priority (core training loop)
-- [ ] **SM-2 spaced repetition UI** — `Train.jsx` exists but isn't wired to
-  `GET /api/repertoire/due` or `POST /api/repertoire/{id}/review`. The backend
-  logic is complete; just needs the frontend drill flow.
-- [ ] **Clickable deviation heatmap** — Dashboard board shows hot squares but
-  clicking a square should filter the "Recent deviations" list to games
-  where you deviated on that square.
-- [ ] **Unified Repertoire/Train layout** — board always visible in the same
-  chrome for both Study and Drill modes (currently separate screens).
+See [ROADMAP.md](./ROADMAP.md) for the up-to-date, checked-off list. Summary of
+this session's autonomous pass:
 
-### Coverage gaps follow-up
-- [ ] **First-move gaps for Black openings** — current algorithm starts
-  recording after your first move, so "opponent played 1.d4 and you have no
-  Sicilian for it" isn't flagged yet. Need a separate pass at depth-0.
-- [ ] **Line coverage gaps in Repertoire screen** — show uncovered opponent
-  responses inline next to each line, not just on the Dashboard.
-- [ ] **User rating update UI** — `PATCH /api/users/me/rating` exists but there's
-  no settings page to call it. Add a small rating input in the topbar or a
-  settings modal.
+### Done this session
+- [x] Confirmed SM-2 review UI is fully wired — `Study.jsx` (used as the
+  "Repertoire" screen) drills a line then posts Again/Hard/Good/Easy to
+  `POST /api/repertoire/{id}/review`. `Train.jsx` and `screens/Repertoire.jsx`
+  turned out to be superseded/unused leftovers (not imported by `App.jsx`).
+- [x] `JWT_SECRET` now configurable via `.env` (see `.env.example`) instead of
+  only the hardcoded dev default.
+- [x] `frequency_cache` rows now expire after 30 days and are refreshed.
+- [x] First-move coverage gaps for Black openings — new root-level
+  "Black repertoire — opponent's 1st move" block flags e.g. "opponent played
+  1.d4 and you have no Black opening for it".
+- [x] Chess.com username is now persisted to the user's profile
+  (`PATCH /api/users/me/chesscom-username`) after a successful import.
+- [x] Deviation heatmap on the Dashboard is now clickable — filters "Recent
+  deviations" to games that deviated on the clicked square.
+- [x] Rating is now editable inline from the topbar
+  (`PATCH /api/users/me/rating`), no more settings-page dependency for that.
 
-### Personalization
-- [ ] **Opponent model** — after N imports, show which moves your real opponents
-  play and how often you deviate against each specific opponent.
-- [ ] **Pre-game prep** — given an opponent's Chess.com username, pull their
-  recent games, surface which of your lines they're most likely to face you with.
+### Still open (high priority)
+- [ ] User-scoped repertoire — all users currently share the same seeded
+  openings; no per-user CRUD yet.
+- [ ] Line coverage gaps inline in the Study/Repertoire screen (currently only
+  on the Dashboard).
+- [ ] "Start review session" doesn't yet auto-select the first due line.
+- [ ] Clean up dead code: delete `Train.jsx` and `screens/Repertoire.jsx`.
 
-### Infrastructure
-- [ ] **chess.js** — `src/utils/chess.js` is a simplified move generator (no
-  en passant, castling rights, pin detection). Replace with the `chess.js` npm
-  package for correctness in Study/Train screens.
-- [ ] **Stockfish server-side** — on deviation, return engine's top line + short
-  explanation of why the repertoire move is better.
-- [ ] **User-scoped repertoire** — currently all users share the same seeded
-  openings. Each user should have their own repertoire they can add/remove lines from.
-- [ ] **Wire Chess.com username to user profile** — when user imports games in
-  the Import screen, auto-save the Chess.com username to `users.chesscom_username`
-  so it persists across sessions without localStorage.
-- [ ] **JWT_SECRET env var** — set a real secret in `docker-compose.yml` or a
-  `.env` file for production. Default is `dev-secret-change-in-production`.
-- [ ] **Frequency cache TTL** — `frequency_cache` rows never expire. Add a
-  `fetched_at` check (e.g. refresh after 30 days) for long-running deployments.
-
-### UI / UX
-- [ ] **Unified color scheme** — board squares should match the dark UI palette.
-- [ ] **Mobile layout** — currently desktop-only.
-- [ ] **Settings page** — rating, Chess.com username, time control preference
-  for Lichess frequency queries.
+### Still open (lower priority)
+- [ ] Opponent model, pre-game prep (personalization features).
+- [ ] Replace `utils/chess.js` with the `chess.js` npm package.
+- [ ] Stockfish server-side explanation on deviation.
+- [ ] Unified color scheme, mobile layout.

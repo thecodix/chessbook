@@ -1,7 +1,7 @@
 import re
 import time
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
 import httpx
@@ -362,6 +362,55 @@ def _compute_gaps(
             positions=positions,
         ))
 
+    # ── Root-level gap: opponent's very first move, aggregated across the
+    # whole Black repertoire. Per-opening analysis above can't catch "opponent
+    # played 1.d4 and I have no Black opening for it" because each opening's
+    # move list is filtered to games that already match its first move(s).
+    black_entries = [(line, opening) for line, opening in lines_with_openings if opening.color == 'black']
+    if black_entries:
+        root_covered_by: dict = defaultdict(list)
+        for line, opening in black_entries:
+            if not line.moves:
+                continue
+            root_covered_by[_strip(line.moves[0])].append(f"{opening.name} · {line.label}")
+
+        root_counts:  dict = defaultdict(int)
+        root_display: dict = {}
+        root_games_analyzed = 0
+        for game in games:
+            if game.is_white:
+                continue
+            raw_moves: list = game.moves or []
+            if not raw_moves:
+                continue
+            root_games_analyzed += 1
+            first = _strip(raw_moves[0])
+            root_counts[first] += 1
+            root_display.setdefault(first, _display(raw_moves[0]))
+
+        if root_games_analyzed:
+            root_entries: list[CoverageEntry] = []
+            for move_key, count in sorted(root_counts.items(), key=lambda x: -x[1]):
+                if count < 2:
+                    continue
+                covered_by = root_covered_by.get(move_key, [])
+                root_entries.append(CoverageEntry(
+                    move=root_display.get(move_key, move_key),
+                    count=count,
+                    total=root_games_analyzed,
+                    frequency=count / root_games_analyzed,
+                    covered=bool(covered_by),
+                    covered_by=covered_by,
+                ))
+            if root_entries:
+                results.insert(0, CoverageGapOut(
+                    opening_id="_root_black",
+                    opening_name="Black repertoire — opponent's 1st move",
+                    color="black",
+                    games_analyzed=root_games_analyzed,
+                    positions=[CoveragePosition(prefix=[], depth=1, entries=root_entries)],
+                ))
+
     return results
 
 
@@ -369,6 +418,7 @@ def _compute_gaps(
 
 _LICHESS_SPEEDS  = "blitz,rapid"
 _LICHESS_BUCKETS = [1000, 1200, 1400, 1600, 1800, 2000, 2200, 2500]
+_FREQUENCY_CACHE_TTL = timedelta(days=30)
 _mem_cache: dict[str, dict] = {}   # process-level cache; survives between requests
 
 
@@ -474,7 +524,8 @@ async def coverage_gaps(
             row = db.query(models.FrequencyCache).filter_by(
                 fen=fen, ratings_key=buckets, speeds_key=_LICHESS_SPEEDS,
             ).first()
-            if row:
+            is_fresh = row and (datetime.utcnow() - row.fetched_at) < _FREQUENCY_CACHE_TTL
+            if is_fresh:
                 cached_positions.append((oi, pi, row.moves, row.total))
             else:
                 uncached_positions.append((oi, pi, fen))

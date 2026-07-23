@@ -241,6 +241,7 @@ export default function Dashboard({ user, onStartReview }) {
   const [due,   setDue]   = useState([])
   const [games, setGames] = useState(MOCK_GAMES)
   const [loading, setLoading] = useState(true)
+  const [selectedSq, setSelectedSq] = useState(null) // [r, c] — clicked heatmap square
 
   const username = localStorage.getItem('chessbook_username')
 
@@ -259,6 +260,17 @@ export default function Dashboard({ user, onStartReview }) {
       .filter(v => v != null)
     return vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1) : null
   })()
+
+  const shownDeviations = selectedSq
+    ? deviations.filter(g => {
+        const sq = sanToSquare(g.deviation.played)
+        return sq && sq[0] === selectedSq[0] && sq[1] === selectedSq[1]
+      })
+    : deviations
+
+  const handleHeatmapSquareClick = (r, c) => {
+    setSelectedSq(prev => (prev && prev[0] === r && prev[1] === c) ? null : [r, c])
+  }
 
   const board = fenToBoard(START_FEN)
 
@@ -326,14 +338,29 @@ export default function Dashboard({ user, onStartReview }) {
                 size={200}
                 interactive={false}
                 heatmap={heatmap}
+                selectedSquare={selectedSq}
+                onSquareClick={handleHeatmapSquareClick}
                 layers={{ attacks: false, coverage: false, targets: false, hanging: false, winning: false, selection: false }}
               />
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 8 }}>
                   Red squares show where you deviate most often. Darker = more frequent.
+                  Click a square to filter deviations by that square.
                 </div>
+                {selectedSq && (
+                  <button
+                    onClick={() => setSelectedSq(null)}
+                    style={{
+                      fontSize: 11, padding: '3px 8px', borderRadius: 6, marginBottom: 8,
+                      background: 'rgba(255,220,0,.1)', border: '0.5px solid rgba(255,220,0,.35)',
+                      color: 'var(--amber)', cursor: 'pointer', fontFamily: 'inherit',
+                    }}
+                  >
+                    Clear square filter ({shownDeviations.length})
+                  </button>
+                )}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  {deviations.slice(0, 4).map(g => (
+                  {shownDeviations.slice(0, 4).map(g => (
                     <div key={g.id} style={{ fontSize: 12 }}>
                       <span style={{ color: 'var(--text3)' }}>{g.opening}</span>
                       <span style={{ color: 'var(--text4)', marginLeft: 6 }}>
@@ -342,6 +369,9 @@ export default function Dashboard({ user, onStartReview }) {
                       </span>
                     </div>
                   ))}
+                  {shownDeviations.length === 0 && (
+                    <div style={{ fontSize: 12, color: 'var(--text4)' }}>No deviations on this square.</div>
+                  )}
                 </div>
               </div>
             </div>
@@ -355,9 +385,19 @@ export default function Dashboard({ user, onStartReview }) {
 
       {/* Right column — recent deviations */}
       <div style={{ width: 290, display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <div className="card-head" style={{ paddingTop: 2 }}>Recent deviations</div>
+        <div className="card-head" style={{ paddingTop: 2 }}>
+          Recent deviations
+          {selectedSq && (
+            <span style={{ fontSize: 11, color: 'var(--amber)', textTransform: 'none' }}>
+              filtered by square
+            </span>
+          )}
+        </div>
         {loading && <div style={{ fontSize: 13, color: 'var(--text4)' }}>Loading…</div>}
-        {deviations.slice(0, 8).map(g => (
+        {!loading && shownDeviations.length === 0 && (
+          <div style={{ fontSize: 13, color: 'var(--text4)' }}>No deviations to show.</div>
+        )}
+        {shownDeviations.slice(0, 8).map(g => (
           <div key={g.id} className="card" style={{ padding: '10px 12px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
               <span style={{ fontSize: 13, color: 'var(--text1)', fontWeight: 500 }}>{g.opening}</span>

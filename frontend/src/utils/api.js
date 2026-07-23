@@ -38,6 +38,9 @@ export const getMe = () => req('/users/me')
 export const updateRating = (rating) =>
   req(`/users/me/rating?rating=${rating}`, { method: 'PATCH' })
 
+export const updateChesscomUsername = (chesscomUsername) =>
+  req(`/users/me/chesscom-username?chesscom_username=${encodeURIComponent(chesscomUsername)}`, { method: 'PATCH' })
+
 // ── Repertoire ─────────────────────────────────────────────────────────────────
 
 export const getRepertoire = ()                               => req('/repertoire/')

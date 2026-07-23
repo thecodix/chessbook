@@ -20,6 +20,8 @@ const DARK_SQ  = '#1e1e2e'
  *   layers       — { attacks, coverage, targets, hanging, winning, selection }
  *   onMove       — called with (fromR, fromC, toR, toC) when user drags/clicks a move
  *   interactive  — whether clicks select pieces (default true)
+ *   onSquareClick — called with (r, c) on any click, regardless of `interactive`
+ *                   (used e.g. for clicking heatmap squares on a non-interactive board)
  */
 export default function Board({
   board,
@@ -30,6 +32,8 @@ export default function Board({
   onMove,
   interactive = true,
   heatmap = null,   // 8x8 array of [0-1] intensities → red overlay
+  onSquareClick = null,
+  selectedSquare = null,   // [r, c] — draws a highlight ring, independent of move-selection
 }) {
   const canvasRef = useRef(null)
   const [selSq, setSelSq] = useState(null)
@@ -92,6 +96,14 @@ export default function Board({
       }
     }
 
+    // Externally controlled selected square (e.g. clicked heatmap square)
+    if (selectedSquare) {
+      const [sr, sc] = selectedSquare
+      const dr = flipped ? 7-sr : sr, dc = flipped ? 7-sc : sc
+      ctx.strokeStyle = 'rgba(255,220,0,0.9)'; ctx.lineWidth = 2.5
+      ctx.strokeRect(dc*sq+1.25, dr*sq+1.25, sq-2.5, sq-2.5)
+    }
+
     // Selection + legal moves
     if (layers.selection && selSq) {
       const [sr, sc] = selSq
@@ -134,7 +146,7 @@ export default function Board({
       ctx.textAlign = 'right'; ctx.textBaseline = 'top'
       ctx.fillText(flipped ? i+1 : 8-i, sq*8 - 2, i*sq + 2)
     }
-  }, [board, flipped, selSq, selMoves, highlightSqs, layers, heatmap, sq])
+  }, [board, flipped, selSq, selMoves, highlightSqs, layers, heatmap, selectedSquare, sq])
 
   useEffect(() => { draw() }, [draw])
 
@@ -142,7 +154,7 @@ export default function Board({
   useEffect(() => { setSelSq(null); setSelMoves([]) }, [board])
 
   const handleClick = useCallback(e => {
-    if (!interactive || !board) return
+    if (!board) return
     const canvas = canvasRef.current
     const rect = canvas.getBoundingClientRect()
     const scaleX = canvas.width / rect.width, scaleY = canvas.height / rect.height
@@ -150,6 +162,10 @@ export default function Board({
     let r = Math.floor((e.clientY - rect.top)  * scaleY / sq)
     if (flipped) { r = 7 - r; c = 7 - c }
     if (!inBounds(r, c)) return
+
+    onSquareClick?.(r, c)
+
+    if (!interactive) return
 
     if (selSq) {
       const mv = selMoves.find(([mr, mc]) => mr === r && mc === c)
@@ -167,7 +183,7 @@ export default function Board({
     } else {
       setSelSq(null); setSelMoves([])
     }
-  }, [board, flipped, interactive, selSq, selMoves, onMove, sq])
+  }, [board, flipped, interactive, selSq, selMoves, onMove, onSquareClick, sq])
 
   return (
     <canvas
@@ -175,7 +191,7 @@ export default function Board({
       width={size}
       height={size}
       onClick={handleClick}
-      style={{ display: 'block', borderRadius: 4, border: '0.5px solid #2a2a2e', cursor: interactive ? 'pointer' : 'default' }}
+      style={{ display: 'block', borderRadius: 4, border: '0.5px solid #2a2a2e', cursor: (interactive || onSquareClick) ? 'pointer' : 'default' }}
     />
   )
 }

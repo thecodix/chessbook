@@ -3,7 +3,7 @@ import Dashboard  from './screens/Dashboard'
 import Study      from './screens/Study'
 import Import     from './screens/Import'
 import Login      from './screens/Login'
-import { getMe, clearToken } from './utils/api'
+import { getMe, clearToken, updateRating } from './utils/api'
 import './app.css'
 
 const SCREENS = [
@@ -11,6 +11,65 @@ const SCREENS = [
   { id: 'repertoire', label: 'Repertoire' },
   { id: 'import',     label: 'Import games' },
 ]
+
+function RatingEditor({ user, onUpdated }) {
+  const [editing, setEditing] = useState(false)
+  const [value,   setValue]   = useState(user.platformRating ?? 1500)
+  const [saving,  setSaving]  = useState(false)
+
+  if (!editing) {
+    return (
+      <div
+        onClick={() => { setValue(user.platformRating ?? 1500); setEditing(true) }}
+        style={{ fontSize: 11, color: 'var(--text4)', cursor: 'pointer' }}
+        title="Click to update your rating"
+      >
+        {user.platformRating ? `${user.platformRating} rated` : 'set rating'}
+      </div>
+    )
+  }
+
+  const save = async () => {
+    setSaving(true)
+    try {
+      const updated = await updateRating(Number(value))
+      onUpdated(updated)
+      setEditing(false)
+    } catch (e) {
+      console.warn('Failed to update rating', e)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+      <input
+        type="number"
+        min={100}
+        max={3000}
+        value={value}
+        onChange={e => setValue(e.target.value)}
+        onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false) }}
+        autoFocus
+        style={{
+          width: 60, fontSize: 11, padding: '2px 5px', borderRadius: 5,
+          background: 'var(--bg2)', border: '0.5px solid var(--border)', color: 'var(--text1)',
+        }}
+      />
+      <button
+        onClick={save}
+        disabled={saving}
+        style={{
+          fontSize: 11, padding: '2px 7px', borderRadius: 5, cursor: 'pointer', fontFamily: 'inherit',
+          background: 'var(--green-bg)', border: '0.5px solid var(--green-border)', color: 'var(--green)',
+        }}
+      >
+        {saving ? '…' : 'Save'}
+      </button>
+    </div>
+  )
+}
 
 export default function App() {
   const [screen, setScreen] = useState('repertoire')
@@ -81,9 +140,7 @@ export default function App() {
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: 13, color: 'var(--text1)', fontWeight: 500 }}>{user.username}</div>
-            {user.platformRating && (
-              <div style={{ fontSize: 11, color: 'var(--text4)' }}>{user.platformRating} rated</div>
-            )}
+            <RatingEditor user={user} onUpdated={setUser} />
           </div>
           <button
             onClick={handleLogout}

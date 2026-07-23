@@ -22,6 +22,7 @@ services:
     environment:
       DATABASE_URL: postgresql://chessbook:chessbook@db:5432/chessbook
       WATCHFILES_FORCE_POLLING: "true"
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-in-production}
     depends_on:
       db:
         condition: service_healthy

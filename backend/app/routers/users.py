@@ -92,3 +92,15 @@ def update_rating(
     db.commit()
     db.refresh(current_user)
     return UserOut.model_validate(current_user)
+
+
+@router.patch("/me/chesscom-username", response_model=UserOut)
+def update_chesscom_username(
+    chesscom_username: str,
+    current_user:       models.User = Depends(get_current_user),
+    db:                 Session     = Depends(get_db),
+):
+    current_user.chesscom_username = chesscom_username.strip() or None
+    db.commit()
+    db.refresh(current_user)
+    return UserOut.model_validate(current_user)

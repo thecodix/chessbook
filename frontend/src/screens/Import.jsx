@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { importGames, getGames } from '../utils/api'
+import { importGames, getGames, updateChesscomUsername } from '../utils/api'
 
 const TIME_CLASS_ICONS = { bullet: '⚡', blitz: '⏱', rapid: '🕐', classical: '♟', daily: '📅' }
 
@@ -507,6 +507,7 @@ export default function Import() {
       setGames(data)
       setDbCount(null)
       localStorage.setItem('chessbook_username', u)
+      updateChesscomUsername(u).catch(err => console.warn('Failed to save Chess.com username to profile', err))
     } catch (e) {
       setError(e.message)
     } finally {
