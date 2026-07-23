@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Board from '../components/Board'
 import { OPENING_LIST, OPENINGS } from '../utils/repertoire'
-import { buildHistory, fenToBoard, START_FEN } from '../utils/chess'
+import { buildHistory, fenToBoard, stripSan, START_FEN } from '../utils/chess'
 import { getRepertoire, submitReview } from '../utils/api'
 
 function useBoardSize(ref) {
@@ -87,7 +87,7 @@ const QUALITY_BTNS = [
   { label: 'Easy',  quality: 5, color: 'var(--purple)', bg: 'rgba(160,70,210,.10)', border: 'rgba(160,70,210,.3)' },
 ]
 
-export default function Study() {
+export default function Study({ initialTarget = null }) {
   // Openings state — initialized from static, replaced by API when available
   const [openingList, setOpeningList] = useState(
     OPENING_LIST.map(o => ({ ...o, retention: OPENINGS[o.key]?.retention ?? 50 }))
@@ -139,6 +139,19 @@ export default function Study() {
     setMode('study')
   }, [selectedKey, selectedLineIdx])
 
+  // Auto-select + jump into drill mode for a due line handed down from the
+  // Dashboard's "Start review session" button.
+  useEffect(() => {
+    if (!initialTarget || !apiLoaded) return
+    const op = openingsMap[initialTarget.openingId]
+    const idx = op?.lines?.findIndex(l => l.id === initialTarget.lineId) ?? -1
+    if (idx === -1) return
+    setSelectedKey(initialTarget.openingId)
+    setSelectedLineIdx(idx)
+    setMode('drill')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialTarget, apiLoaded])
+
   // Opponent auto-response
   useEffect(() => {
     if (mode !== 'drill' || done || feedback || !line || step >= totalMoves) return
@@ -162,17 +175,12 @@ export default function Study() {
     return () => window.removeEventListener('keydown', onKey)
   }, [mode, totalMoves])
 
-  const handleMove = useCallback((fromR, fromC, toR, toC) => {
+  const handleMove = useCallback((moveResult) => {
     if (!isPlayerTurn || step >= totalMoves) return
-    const cur  = history[step]
-    const next = history[step + 1]
-    if (!cur || !next) return
+    const expected = line?.moves?.[step]
+    const correct  = expected && stripSan(moveResult.san) === stripSan(expected)
 
-    const piece       = cur[fromR][fromC]
-    const matchesDest = next[toR][toC] === piece
-    const srcCleared  = next[fromR][fromC] === null || (fromR === toR && fromC === toC)
-
-    if (piece && matchesDest && (srcCleared || fromR !== toR || fromC !== toC)) {
+    if (correct) {
       setFeedback('correct')
       setTimeout(() => {
         setFeedback(null)
@@ -184,7 +192,7 @@ export default function Study() {
       setFeedback('wrong')
       setTimeout(() => setFeedback(null), 900)
     }
-  }, [history, step, totalMoves, isPlayerTurn])
+  }, [line, step, totalMoves, isPlayerTurn])
 
   const handleRate = async (quality) => {
     if (reviewing) return
@@ -219,8 +227,9 @@ export default function Study() {
   const enterStudy = () => { setStep(0); setFeedback(null); setDone(false); setReviewResult(null); setMode('study') }
   const selectOpening = (key) => { setSelectedKey(key); setSelectedLineIdx(0) }
 
-  const board        = history[step]     || fenToBoard(START_FEN)
-  const prevBoard    = history[step - 1] || null
+  const fen          = history[step] || START_FEN
+  const board        = fenToBoard(fen)
+  const prevBoard    = history[step - 1] ? fenToBoard(history[step - 1]) : null
   const highlightSqs = step > 0 ? changedSquares(prevBoard, board) : []
 
   const prevMove  = step > 0 ? line?.moves[step - 1] : null
@@ -268,7 +277,7 @@ export default function Study() {
           style={{ flex: 1, minHeight: 0, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
           <Board
-            board={board}
+            fen={fen}
             size={boardSize}
             flipped={playerColor === 'black'}
             highlightSqs={highlightSqs}

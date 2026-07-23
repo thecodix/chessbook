@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import Board from '../components/Board'
 import { fenToBoard, START_FEN } from '../utils/chess'
-import { getDue, getGames, getCoverageGaps } from '../utils/api'
+import { getDue, getGames, getCoverageGaps, getDeviationAnalysis } from '../utils/api'
 import { MOCK_GAMES } from '../utils/chesscom'
 
 function retentionColor(n) {
@@ -238,6 +238,8 @@ function CoverageGaps({ username, user }) {
 
 
 export default function Dashboard({ user, onStartReview }) {
+  // onStartReview(dueLine) is called with the first due line so the caller
+  // can jump straight into drilling it.
   const [due,   setDue]   = useState([])
   const [games, setGames] = useState(MOCK_GAMES)
   const [loading, setLoading] = useState(true)
@@ -314,7 +316,7 @@ export default function Dashboard({ user, onStartReview }) {
             </div>
           )}
           {due.length > 0 && (
-            <button className="btn-green" style={{ marginTop: 10 }} onClick={onStartReview}>
+            <button className="btn-green" style={{ marginTop: 10 }} onClick={() => onStartReview(due[0])}>
               Start review session
             </button>
           )}
@@ -414,10 +416,69 @@ export default function Dashboard({ user, onStartReview }) {
                 {g.deviation.note}
               </div>
             )}
+            <AskStockfish gameId={g.id} />
           </div>
         ))}
       </div>
 
+    </div>
+  )
+}
+
+function AskStockfish({ gameId }) {
+  const [open, setOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+  const [result, setResult] = useState(null)
+
+  const toggle = async () => {
+    if (open) { setOpen(false); return }
+    setOpen(true)
+    if (result || loading) return
+    setLoading(true)
+    setError(null)
+    try {
+      setResult(await getDeviationAnalysis(gameId))
+    } catch (e) {
+      setError(e.message || 'Analysis failed')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div style={{ marginTop: 6 }}>
+      <button
+        onClick={toggle}
+        style={{
+          fontSize: 11, padding: '3px 8px', borderRadius: 5,
+          background: 'transparent', border: '0.5px solid var(--border)',
+          color: 'var(--purple)', cursor: 'pointer', fontFamily: 'inherit',
+        }}
+      >
+        {open ? 'Hide analysis' : 'Ask Stockfish'}
+      </button>
+      {open && (
+        <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 6, lineHeight: 1.5 }}>
+          {loading && <span style={{ color: 'var(--text4)' }}>Analyzing...</span>}
+          {error && <span style={{ color: 'var(--red)' }}>{error}</span>}
+          {result && (
+            <>
+              <div>{result.explanation}</div>
+              <div style={{ marginTop: 4, color: 'var(--text4)' }}>
+                eval after {result.playedMove}: {result.evalPlayed ?? 'n/a'}
+                {'  |  '}
+                after {result.expectedMove}: {result.evalExpected ?? 'n/a'}
+              </div>
+              {result.engineBestLine?.length > 0 && (
+                <div style={{ marginTop: 4, color: 'var(--text4)' }}>
+                  Engine line: {result.engineBestLine.join(' ')}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
     </div>
   )
 }

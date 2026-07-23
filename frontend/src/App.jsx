@@ -74,6 +74,7 @@ function RatingEditor({ user, onUpdated }) {
 export default function App() {
   const [screen, setScreen] = useState('repertoire')
   const [user,   setUser]   = useState(undefined)   // undefined = loading, null = logged out
+  const [reviewTarget, setReviewTarget] = useState(null) // { openingId, lineId } — due line to auto-select in Study
 
   // Restore session on mount
   useEffect(() => {
@@ -158,8 +159,16 @@ export default function App() {
       </header>
 
       <main className="main">
-        {screen === 'dashboard'  && <Dashboard user={user} onStartReview={() => setScreen('repertoire')} />}
-        {screen === 'repertoire' && <Study />}
+        {screen === 'dashboard'  && (
+          <Dashboard
+            user={user}
+            onStartReview={(dueLine) => {
+              setReviewTarget(dueLine ? { openingId: dueLine.openingId, lineId: dueLine.id } : null)
+              setScreen('repertoire')
+            }}
+          />
+        )}
+        {screen === 'repertoire' && <Study initialTarget={reviewTarget} />}
         {screen === 'import'     && <Import />}
       </main>
     </div>

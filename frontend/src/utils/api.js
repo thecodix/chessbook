@@ -61,3 +61,8 @@ export const getGames = (username) =>
 
 export const getCoverageGaps = (username, limit = 300) =>
   req(`/games/coverage-gaps?username=${encodeURIComponent(username)}&limit=${limit}`)
+
+// ── Analysis ───────────────────────────────────────────────────────────────────
+
+export const getDeviationAnalysis = (gameId) =>
+  req(`/analysis/deviation/${encodeURIComponent(gameId)}`)

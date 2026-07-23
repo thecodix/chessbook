@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
-import { buildAttackMaps, legalMovesForPiece, isWhite, isBlack, inBounds } from '../utils/chess'
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
+import { buildAttackMaps, legalMovesForPiece, applyClickMove, fenToBoard, isWhite, isBlack, inBounds } from '../utils/chess'
 
 const GLYPHS = {
   K:'♔', Q:'♕', R:'♖', B:'♗', N:'♘', P:'♙',
@@ -9,22 +9,27 @@ const GLYPHS = {
 const LIGHT_SQ = '#3e3e52'
 const DARK_SQ  = '#1e1e2e'
 
+const EMPTY_ATTACKS = { wa: Array.from({ length: 8 }, () => new Array(8).fill(0)), ba: Array.from({ length: 8 }, () => new Array(8).fill(0)) }
+
 /**
  * Board component — renders canvas with heatmap overlays.
  *
  * Props:
- *   board        — 8x8 array of piece chars / null
+ *   board        — 8x8 array of piece chars / null (used when `fen` isn't given, e.g. static display)
+ *   fen          — FEN string; when provided, drives rendering AND move legality via chess.js
  *   size         — canvas size in px (default 360)
  *   flipped      — boolean
  *   highlightSqs — [[r,c], ...] teal highlight (last move, target squares)
  *   layers       — { attacks, coverage, targets, hanging, winning, selection }
- *   onMove       — called with (fromR, fromC, toR, toC) when user drags/clicks a move
- *   interactive  — whether clicks select pieces (default true)
+ *   onMove       — called with { san, fen, from: [r,c], to: [r,c] } when the user
+ *                   completes a legal move by click (requires `fen` + `interactive`)
+ *   interactive  — whether clicks select pieces and allow moves (default true)
  *   onSquareClick — called with (r, c) on any click, regardless of `interactive`
  *                   (used e.g. for clicking heatmap squares on a non-interactive board)
  */
 export default function Board({
-  board,
+  board: boardProp,
+  fen = null,
   size = 360,
   flipped = false,
   highlightSqs = [],
@@ -40,11 +45,13 @@ export default function Board({
   const [selMoves, setSelMoves] = useState([])
   const sq = size / 8
 
+  const board = useMemo(() => (fen ? fenToBoard(fen) : boardProp), [fen, boardProp])
+
   const draw = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas || !board) return
     const ctx = canvas.getContext('2d')
-    const { wa, ba } = buildAttackMaps(board)
+    const { wa, ba } = fen ? buildAttackMaps(fen) : EMPTY_ATTACKS
 
     // Base squares
     for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
@@ -146,7 +153,7 @@ export default function Board({
       ctx.textAlign = 'right'; ctx.textBaseline = 'top'
       ctx.fillText(flipped ? i+1 : 8-i, sq*8 - 2, i*sq + 2)
     }
-  }, [board, flipped, selSq, selMoves, highlightSqs, layers, heatmap, selectedSquare, sq])
+  }, [board, fen, flipped, selSq, selMoves, highlightSqs, layers, heatmap, selectedSquare, sq])
 
   useEffect(() => { draw() }, [draw])
 
@@ -165,12 +172,13 @@ export default function Board({
 
     onSquareClick?.(r, c)
 
-    if (!interactive) return
+    if (!interactive || !fen) return
 
     if (selSq) {
       const mv = selMoves.find(([mr, mc]) => mr === r && mc === c)
       if (mv) {
-        onMove?.(selSq[0], selSq[1], r, c)
+        const result = applyClickMove(fen, selSq[0], selSq[1], r, c)
+        if (result) onMove?.({ ...result, from: selSq, to: [r, c] })
         setSelSq(null); setSelMoves([])
         return
       }
@@ -179,11 +187,11 @@ export default function Board({
     const p = board[r][c]
     if (p) {
       setSelSq([r, c])
-      setSelMoves(legalMovesForPiece(board, r, c))
+      setSelMoves(legalMovesForPiece(fen, r, c))
     } else {
       setSelSq(null); setSelMoves([])
     }
-  }, [board, flipped, interactive, selSq, selMoves, onMove, onSquareClick, sq])
+  }, [board, fen, flipped, interactive, selSq, selMoves, onMove, onSquareClick, sq])
 
   return (
     <canvas

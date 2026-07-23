@@ -108,23 +108,23 @@ chessbook/
 │       ├── auth.py             JWT + bcrypt helpers + FastAPI deps
 │       ├── models.py           Opening, Line, Game, User, FrequencyCache
 │       ├── database.py         SQLAlchemy engine (DATABASE_URL env var)
-│       ├── main.py             FastAPI app, CORS, startup seed
+│       ├── main.py             FastAPI app, CORS, startup seed, Stockfish engine lifecycle
 │       └── routers/
 │           ├── users.py        /api/users/*
 │           ├── games.py        /api/games/* (import, list, coverage-gaps)
-│           └── repertoire.py   /api/repertoire/* (SM-2 spaced repetition)
+│           ├── repertoire.py   /api/repertoire/* (SM-2 spaced repetition)
+│           └── analysis.py     /api/analysis/* (Stockfish deviation analysis)
 └── frontend/
     └── src/
         ├── App.jsx             Auth state, topbar, screen routing
         ├── screens/
         │   ├── Login.jsx       Sign in / Create account
-        │   ├── Dashboard.jsx   Heatmap, due lines, coverage gaps
+        │   ├── Dashboard.jsx   Heatmap, due lines, coverage gaps, Ask Stockfish
         │   ├── Import.jsx      Chess.com import + analytics (ELO chart, results by month)
-        │   ├── Study.jsx       Repertoire browser
-        │   └── Train.jsx       Drill mode
+        │   └── Study.jsx       Repertoire browser + drill mode (unified)
         └── utils/
             ├── api.js          All backend calls + auth token management
-            ├── chess.js        Move gen, FEN, attack maps (simplified — no en passant)
+            ├── chess.js        Thin wrapper around the `chess.js` npm package
             └── chesscom.js     Chess.com parser + MOCK_GAMES fallback
 ```
 
@@ -158,11 +158,29 @@ this session's autonomous pass:
   openings; no per-user CRUD yet.
 - [ ] Line coverage gaps inline in the Study/Repertoire screen (currently only
   on the Dashboard).
-- [ ] "Start review session" doesn't yet auto-select the first due line.
-- [ ] Clean up dead code: delete `Train.jsx` and `screens/Repertoire.jsx`.
 
 ### Still open (lower priority)
 - [ ] Opponent model, pre-game prep (personalization features).
-- [ ] Replace `utils/chess.js` with the `chess.js` npm package.
-- [ ] Stockfish server-side explanation on deviation.
 - [ ] Unified color scheme, mobile layout.
+
+### Done in the second session (chess.js + Stockfish pass)
+- [x] Replaced the hand-rolled move generator in `utils/chess.js` with the
+  `chess.js` npm package — `Board.jsx` and `Study.jsx` now work off FEN
+  strings + SAN comparison (`stripSan`), so castling, en passant, promotion
+  and pins are handled correctly (previously broken/unsupported).
+- [x] `Board.jsx` accepts a `fen` prop and derives the grid/attack maps/legal
+  moves from it via chess.js, calling `onMove({ san, fen, from, to })`
+  instead of raw coordinates.
+- [x] Deleted dead code: `screens/Train.jsx`, `screens/Repertoire.jsx` and
+  `hooks/useStockfish.js` (client-side WebWorker engine, superseded by the
+  new server-side Stockfish endpoint).
+- [x] "Start review session" on the Dashboard now passes the first due line
+  to `Study.jsx`, which auto-selects it and jumps straight into drill mode.
+- [x] Stockfish server-side — new `GET /api/analysis/deviation/{game_id}`
+  endpoint (`analysis.py`) replays the game up to the deviation with
+  `python-chess`, runs the engine on the pre-deviation position plus the
+  expected/played moves, and returns an eval delta + tiered explanation.
+  Engine binary installed via `apt-get install stockfish` in `Dockerfile`;
+  lifecycle managed with `chess.engine.popen_uci` in `main.py` startup/
+  shutdown hooks (falls back to a 503 if the binary isn't found). Wired up
+  as an "Ask Stockfish" expandable panel on each deviation card.

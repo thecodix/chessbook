@@ -1,7 +1,12 @@
+import asyncio
+import os
+import shutil
+
+import chess.engine
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import repertoire, games, users
+from app.routers import repertoire, games, users, analysis
 from app.database import Base, engine, SessionLocal
 from app import models  # noqa: F401 — registers models with metadata
 
@@ -18,6 +23,7 @@ app.add_middleware(
 app.include_router(users.router,      prefix="/api/users",      tags=["users"])
 app.include_router(repertoire.router, prefix="/api/repertoire", tags=["repertoire"])
 app.include_router(games.router,      prefix="/api/games",      tags=["games"])
+app.include_router(analysis.router,   prefix="/api/analysis",   tags=["analysis"])
 
 
 @app.get("/api/health")
@@ -110,6 +116,25 @@ _SEED = [
 def startup():
     Base.metadata.create_all(bind=engine)
     _seed()
+
+
+@app.on_event("startup")
+async def startup_stockfish():
+    app.state.stockfish = None
+    app.state.stockfish_lock = asyncio.Lock()
+    path = os.getenv("STOCKFISH_PATH") or shutil.which("stockfish") or "/usr/games/stockfish"
+    try:
+        _, uci_engine = await chess.engine.popen_uci(path)
+        app.state.stockfish = uci_engine
+    except Exception as exc:  # binary missing, unreadable, etc. — analysis endpoint returns 503
+        print(f"Stockfish engine unavailable at '{path}' ({exc}); deviation analysis disabled.")
+
+
+@app.on_event("shutdown")
+async def shutdown_stockfish():
+    uci_engine = getattr(app.state, "stockfish", None)
+    if uci_engine:
+        await uci_engine.quit()
 
 
 def _seed():
