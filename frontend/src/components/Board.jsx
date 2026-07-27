@@ -171,11 +171,19 @@ export default function Board({
 
   const board = useMemo(() => (fen ? fenToBoard(fen) : boardProp), [fen, boardProp])
 
+  // Stable for the lifetime of this Board instance, so getPieceImage's
+  // per-image waiter Set (keyed by function identity) actually dedupes
+  // repeat registrations instead of accumulating a fresh closure on every
+  // draw() call. Each accumulated waiter fires its own full draw() when the
+  // image loads, which re-registers waiters for any images still pending —
+  // an unstable callback here turns that into a cascading, near-exponential
+  // number of redraws while piece images are still loading.
+  const drawRef = useRef(null)
+  const requestRedrawRef = useRef(() => { if (!animatingRef.current) drawRef.current() })
+
   const drawPieceAt = (ctx, p, x, y) => {
     if (pieceStyle.type === 'image') {
-      const entry = getPieceImage(pieceStyle.set, pieceFileName(p), pieceStyle.ext ?? 'svg', () => {
-        if (!animatingRef.current) draw()
-      })
+      const entry = getPieceImage(pieceStyle.set, pieceFileName(p), pieceStyle.ext ?? 'svg', requestRedrawRef.current)
       if (!entry.loaded) return
       const s = sq * 0.86
       ctx.drawImage(entry.img, x - s / 2, y - s / 2, s, s)
@@ -320,6 +328,7 @@ export default function Board({
       ctx.fillText(flipped ? i+1 : 8-i, sq*8 - 2, i*sq + 2)
     }
   }, [board, fen, flipped, selSq, selMoves, highlightSqs, hintSqs, layers, heatmap, selectedSquare, sq, pieceStyle])
+  drawRef.current = draw
 
   // Redraw immediately for anything other than the board's own content
   // changing (selection, highlights, hints, layer toggles, resize, etc.) —
