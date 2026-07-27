@@ -1,14 +1,21 @@
 import { useState, useEffect } from 'react'
 import Dashboard  from './screens/Dashboard'
 import Study      from './screens/Study'
+import Problems   from './screens/Problems'
 import Import     from './screens/Import'
 import Login      from './screens/Login'
+import Tour       from './components/Tour'
+import PieceStylePicker from './components/PieceStylePicker'
 import { getMe, clearToken, updateRating } from './utils/api'
+import { TOUR_STEPS } from './utils/tourSteps'
 import './app.css'
+
+const TOUR_DONE_KEY = 'chessbook_tour_done'
 
 const SCREENS = [
   { id: 'dashboard',  label: 'Dashboard' },
   { id: 'repertoire', label: 'Repertoire' },
+  { id: 'problems',   label: 'Problems' },
   { id: 'import',     label: 'Import games' },
 ]
 
@@ -75,6 +82,8 @@ export default function App() {
   const [screen, setScreen] = useState('repertoire')
   const [user,   setUser]   = useState(undefined)   // undefined = loading, null = logged out
   const [reviewTarget, setReviewTarget] = useState(null) // { openingId, lineId } — due line to auto-select in Study
+  const [tourStep, setTourStep] = useState(null) // null = tour inactive, else index into TOUR_STEPS
+  const [showPieceStyles, setShowPieceStyles] = useState(false)
 
   // Restore session on mount
   useEffect(() => {
@@ -82,6 +91,23 @@ export default function App() {
       .then(u => setUser(u))
       .catch(() => setUser(null))
   }, [])
+
+  // Auto-start the guided tour for first-time users once logged in
+  useEffect(() => {
+    if (user && !localStorage.getItem(TOUR_DONE_KEY)) setTourStep(0)
+  }, [user])
+
+  // Switch screens as the tour advances into a step that lives on another screen
+  useEffect(() => {
+    if (tourStep == null) return
+    const step = TOUR_STEPS[tourStep]
+    if (step?.screen) setScreen(step.screen)
+  }, [tourStep])
+
+  const nextTourStep  = () => setTourStep(s => Math.min(TOUR_STEPS.length - 1, s + 1))
+  const prevTourStep  = () => setTourStep(s => Math.max(0, s - 1))
+  const finishTour    = () => { localStorage.setItem(TOUR_DONE_KEY, '1'); setTourStep(null) }
+  const restartTour   = () => setTourStep(0)
 
   // Listen for token expiry (dispatched by api.js on 401)
   useEffect(() => {
@@ -125,7 +151,7 @@ export default function App() {
       <header className="topbar">
         <span className="logo">♟ Chessbook</span>
 
-        <nav className="nav">
+        <nav className="nav" data-tour="main-nav">
           {SCREENS.map(s => (
             <button
               key={s.id}
@@ -139,10 +165,36 @@ export default function App() {
 
         {/* User badge */}
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ textAlign: 'right' }}>
+          <div data-tour="user-badge" style={{ textAlign: 'right' }}>
             <div style={{ fontSize: 13, color: 'var(--text1)', fontWeight: 500 }}>{user.username}</div>
             <RatingEditor user={user} onUpdated={setUser} />
           </div>
+          <button
+            onClick={() => setShowPieceStyles(true)}
+            title="Choose a piece style"
+            style={{
+              fontSize: 11, padding: '4px 10px', borderRadius: 6,
+              background: 'transparent', border: '0.5px solid var(--border)',
+              color: 'var(--text4)', cursor: 'pointer', fontFamily: 'inherit',
+            }}
+            onMouseEnter={e => e.currentTarget.style.color = 'var(--text1)'}
+            onMouseLeave={e => e.currentTarget.style.color = 'var(--text4)'}
+          >
+            ♞ Pieces
+          </button>
+          <button
+            onClick={restartTour}
+            title="Replay the guided tour"
+            style={{
+              fontSize: 11, padding: '4px 10px', borderRadius: 6,
+              background: 'transparent', border: '0.5px solid var(--border)',
+              color: 'var(--text4)', cursor: 'pointer', fontFamily: 'inherit',
+            }}
+            onMouseEnter={e => e.currentTarget.style.color = 'var(--text1)'}
+            onMouseLeave={e => e.currentTarget.style.color = 'var(--text4)'}
+          >
+            ? Help
+          </button>
           <button
             onClick={handleLogout}
             style={{
@@ -169,8 +221,22 @@ export default function App() {
           />
         )}
         {screen === 'repertoire' && <Study initialTarget={reviewTarget} />}
+        {screen === 'problems'   && <Problems />}
         {screen === 'import'     && <Import />}
       </main>
+
+      {tourStep != null && (
+        <Tour
+          steps={TOUR_STEPS}
+          stepIndex={tourStep}
+          onNext={nextTourStep}
+          onPrev={prevTourStep}
+          onSkip={finishTour}
+          onFinish={finishTour}
+        />
+      )}
+
+      {showPieceStyles && <PieceStylePicker onClose={() => setShowPieceStyles(false)} />}
     </div>
   )
 }

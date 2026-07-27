@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from sqlalchemy import Boolean, Column, Date, DateTime, Float, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import Boolean, Column, Date, DateTime, Float, ForeignKey, Integer, JSON, String, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 from .database import Base
 
@@ -83,3 +83,16 @@ class Game(Base):
     accuracy     = Column(JSON,    nullable=True)
     game_url     = Column(String,  nullable=True)
     tournament   = Column(String,  nullable=True)
+
+
+class ProblemProgress(Base):
+    __tablename__ = "problem_progress"
+
+    id        = Column(Integer, primary_key=True, autoincrement=True)
+    user_id   = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    puzzle_id = Column(String,  nullable=False, index=True)
+    solved    = Column(Boolean, default=False)
+    attempts  = Column(Integer, default=0)
+    solved_at = Column(DateTime, nullable=True)
+
+    __table_args__ = (UniqueConstraint("user_id", "puzzle_id", name="uq_user_puzzle"),)

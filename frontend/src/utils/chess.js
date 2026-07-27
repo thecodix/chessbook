@@ -49,17 +49,27 @@ export function buildAttackMaps(fen) {
   return { wa, ba }
 }
 
-// Attempt to play a move by grid coordinates (auto-queens promotions).
-// Returns { san, fen } on success, or null if the move is illegal.
-export function applyClickMove(fen, fromR, fromC, toR, toC) {
+// Attempt to play a move by grid coordinates. `promotion` defaults to 'q'
+// but callers (the promotion picker in Board.jsx) can pass 'r' | 'b' | 'n'
+// once the player has chosen a piece.
+// Returns { san, fen, promotion } on success, or null if the move is illegal.
+export function applyClickMove(fen, fromR, fromC, toR, toC, promotion = 'q') {
   const chess = new Chess(fen)
   try {
-    const move = chess.move({ from: rcToSquare(fromR, fromC), to: rcToSquare(toR, toC), promotion: 'q' })
+    const move = chess.move({ from: rcToSquare(fromR, fromC), to: rcToSquare(toR, toC), promotion })
     if (!move) return null
-    return { san: move.san, fen: chess.fen() }
+    return { san: move.san, fen: chess.fen(), promotion: move.promotion || null }
   } catch {
     return null
   }
+}
+
+// Whether the (legal) move from (fromR,fromC) to (toR,toC) is a pawn
+// promotion — used to show a piece picker instead of silently auto-queening.
+export function isPromotionMove(fen, fromR, fromC, toR, toC) {
+  const chess = new Chess(fen)
+  const from = rcToSquare(fromR, fromC), to = rcToSquare(toR, toC)
+  return chess.moves({ square: from, verbose: true }).some(m => m.to === to && m.promotion)
 }
 
 // Build the FEN after each SAN move in `moves`, starting from the initial
@@ -71,6 +81,33 @@ export function buildHistory(moves) {
   for (const mv of moves) {
     try {
       chess.move(mv)
+    } catch {
+      break
+    }
+    history.push(chess.fen())
+  }
+  return history
+}
+
+// Parse a UCI move string (e.g. "f6g7" or "e7e8q" for a promotion) into a
+// chess.js move object.
+export function uciToMove(uci) {
+  return {
+    from:       uci.slice(0, 2),
+    to:         uci.slice(2, 4),
+    promotion:  uci.length > 4 ? uci.slice(4) : 'q',
+  }
+}
+
+// Like buildHistory, but starts from an arbitrary FEN (puzzle position) and
+// plays a list of UCI moves (e.g. a Polgar puzzle's solution line) instead
+// of SAN. Returns an array of FENs of length uciMoves.length + 1.
+export function buildHistoryFromUci(fen, uciMoves) {
+  const chess = new Chess(fen)
+  const history = [chess.fen()]
+  for (const uci of uciMoves) {
+    try {
+      chess.move(uciToMove(uci))
     } catch {
       break
     }

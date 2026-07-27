@@ -90,17 +90,14 @@ export DATABASE_URL=postgresql://localhost/chessbook
 alembic upgrade head
 ```
 
-### Stockfish in production
-The app loads Stockfish from CDN. For production, copy it locally:
+### Deploy (Render)
+`render.yaml` at the repo root defines two services:
+- `chessbook-api` — Docker web service built from `backend/Dockerfile` (includes the
+  `stockfish` binary via apt). Requires `DATABASE_URL` (Neon Postgres) set manually
+  in the Render dashboard; `JWT_SECRET` is auto-generated.
+- `chessbook-frontend` — static site built with `npm run build`, with a rewrite
+  proxying `/api/*` to `chessbook-api` so the frontend's relative `/api` calls work
+  in production without any code changes.
 
-```bash
-cd frontend/public
-curl -O https://cdn.jsdelivr.net/npm/stockfish@16.0.0/src/stockfish.js
-```
-
-Then change the Worker path in `useStockfish.js` to `'/stockfish.js'`.
-
-### Deploy
-- Frontend → Vite build → S3 + CloudFront (matches your existing AWS stack)
-- Backend → Docker → EKS or Lambda (matches AV4 architecture)
-- Add CORS origin for your CloudFront domain in `main.py`
+To deploy: push to GitHub, then create a Blueprint on Render pointing at this repo
+(it will pick up `render.yaml` automatically).

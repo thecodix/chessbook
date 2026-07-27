@@ -66,3 +66,13 @@ export const getCoverageGaps = (username, limit = 300) =>
 
 export const getDeviationAnalysis = (gameId) =>
   req(`/analysis/deviation/${encodeURIComponent(gameId)}`)
+
+// ── Problems ───────────────────────────────────────────────────────────────────
+
+export const getProblemsProgress = () => req('/problems/progress')
+
+export const updateProblemProgress = (puzzleId, solved) =>
+  req(`/problems/progress/${encodeURIComponent(puzzleId)}`, {
+    method: 'POST',
+    body: JSON.stringify({ solved }),
+  })

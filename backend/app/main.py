@@ -6,15 +6,21 @@ import chess.engine
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import repertoire, games, users, analysis
+from app.routers import repertoire, games, users, analysis, problems
 from app.database import Base, engine, SessionLocal
 from app import models  # noqa: F401 — registers models with metadata
 
 app = FastAPI(title="Chessbook API", version="0.1.0")
 
+_cors_origins = [
+    origin.strip()
+    for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
+    if origin.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -24,6 +30,7 @@ app.include_router(users.router,      prefix="/api/users",      tags=["users"])
 app.include_router(repertoire.router, prefix="/api/repertoire", tags=["repertoire"])
 app.include_router(games.router,      prefix="/api/games",      tags=["games"])
 app.include_router(analysis.router,   prefix="/api/analysis",   tags=["analysis"])
+app.include_router(problems.router,   prefix="/api/problems",   tags=["problems"])
 
 
 @app.get("/api/health")

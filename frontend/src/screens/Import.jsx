@@ -345,7 +345,7 @@ function Analytics({ games }) {
   return (
     <>
       {/* Top 3 openings */}
-      <div className="card">
+      <div className="card" data-tour="import-analytics">
         <div className="card-head">Top openings <span style={{ fontSize: 11, color: 'var(--text4)', textTransform: 'none' }}>win rate · elo delta</span></div>
         <div style={{ display: 'flex', gap: 10 }}>
           {topOpenings.length === 0
@@ -528,7 +528,7 @@ export default function Import() {
     <div style={{ flex: 1, padding: 14, display: 'flex', flexDirection: 'column', gap: 12, overflow: 'auto' }}>
 
       {/* Import bar */}
-      <div className="card" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      <div className="card" data-tour="import-bar" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         <input
           type="text"
           placeholder="Chess.com username"
@@ -588,7 +588,7 @@ export default function Import() {
 
       {/* Game list */}
       {games.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+        <div data-tour="game-list" style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
           {games.map(g => <GameCard key={g.id} g={g} />)}
         </div>
       )}

@@ -54,6 +54,13 @@ html, body, #root { height: 100%; background: var(--bg0); color: var(--text0); f
 .card-head { font-size: 16px; font-weight: 500; color: var(--text4); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
 .card-head span { color: var(--green); font-size: 16px; text-transform: none; letter-spacing: 0; }
 
+/* Thin themed scrollbar for capped-height regions (e.g. Coverage gaps) */
+.scroll-region { scrollbar-width: thin; scrollbar-color: var(--bg3) transparent; }
+.scroll-region::-webkit-scrollbar { width: 6px; }
+.scroll-region::-webkit-scrollbar-track { background: transparent; }
+.scroll-region::-webkit-scrollbar-thumb { background: var(--bg3); border-radius: 3px; }
+
+
 /* Right panel */
 .rpanel { width: 210px; background: var(--bg1); border-left: 0.5px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; flex-shrink: 0; }
 .rps { padding: 10px 12px; border-bottom: 0.5px solid var(--border2); }
@@ -90,6 +97,48 @@ html, body, #root { height: 100%; background: var(--bg0); color: var(--text0); f
 .bc-btn { width: 28px; height: 28px; border-radius: 6px; background: var(--bg2); border: 0.5px solid var(--border); color: var(--text3); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-family: inherit; }
 .bc-btn:hover { background: #222228; color: var(--text0); }
 .mv-display { font-size: 16px; color: var(--text1); flex: 1; text-align: center; font-family: monospace; }
+
+/* Puzzle picker grid (Problems screen) */
+.puzzle-grid { display: flex; flex-wrap: wrap; gap: 4px; max-height: 92px; overflow-y: auto; padding: 2px; }
+.puzzle-cell { width: 26px; height: 26px; border-radius: 5px; font-size: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: var(--bg2); border: 0.5px solid var(--border); color: var(--text3); }
+.puzzle-cell:hover { border-color: var(--text3); color: var(--text1); }
+.puzzle-cell.solved { background: var(--green-bg); border-color: var(--green-border); color: var(--green); }
+.puzzle-cell.active { border-color: var(--green); box-shadow: 0 0 0 1px var(--green); }
+
+/* Puzzle-solved celebration popup (Problems screen) */
+.solved-backdrop {
+  position: fixed; inset: 0; z-index: 10002;
+  background: rgba(0,0,0,0.55);
+  display: flex; align-items: center; justify-content: center;
+  animation: solved-fade-in 0.15s ease-out;
+}
+.solved-card {
+  position: relative; overflow: hidden;
+  background: var(--bg2); border: 0.5px solid var(--green-border); border-radius: 14px;
+  padding: 30px 32px 24px; width: 320px; max-width: 90vw; text-align: center;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.4);
+  animation: solved-pop-in 0.28s cubic-bezier(.2,1.4,.4,1);
+}
+.solved-emoji { font-size: 42px; line-height: 1; animation: solved-bounce 0.7s ease-in-out 0.1s; }
+.solved-title { font-size: 19px; font-weight: 700; color: var(--green); margin: 10px 0 4px; }
+.solved-meta { font-size: 13px; color: var(--text3); margin-bottom: 22px; }
+.solved-actions { display: flex; gap: 8px; justify-content: center; }
+.confetti-piece { position: absolute; top: -24px; will-change: transform, opacity; }
+
+@keyframes solved-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes solved-pop-in {
+  0%   { transform: scale(0.85); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes solved-bounce {
+  0%, 100% { transform: translateY(0); }
+  40%      { transform: translateY(-10px); }
+  60%      { transform: translateY(-4px); }
+}
+@keyframes confetti-fall {
+  0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(340px) rotate(340deg); opacity: 0; }
+}
 
 /* Variation path */
 .varpath { font-size: 13px; color: var(--text4); font-family: monospace; line-height: 1.9; }

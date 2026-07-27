@@ -59,3 +59,7 @@
   (`PATCH /api/users/me/rating`)
 - [ ] Unified color scheme (board squares match UI palette)
 - [ ] Mobile layout
+- [x] Guided onboarding tour — spotlight walkthrough (`components/Tour.jsx`,
+  `utils/tourSteps.js`) covering Dashboard, Study and Import screens; runs
+  automatically on first login (`localStorage.chessbook_tour_done`) and is
+  replayable any time via the "? Help" button in the topbar

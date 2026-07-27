@@ -216,7 +216,7 @@ function CoverageGaps({ username, user }) {
   const ratingBand = user?.platformRating ? `~${user.platformRating}` : '~1800'
 
   return (
-    <div className="card">
+    <div className="card" data-tour="coverage-gaps">
       <div className="card-head">
         Coverage gaps
         <span style={{ fontSize: 11, color: 'var(--text4)', textTransform: 'none' }}>
@@ -230,7 +230,9 @@ function CoverageGaps({ username, user }) {
       {loading ? (
         <div style={{ fontSize: 12, color: 'var(--text4)' }}>Analysing your last 300 games…</div>
       ) : (
-        data.map(o => <CoverageOpeningBlock key={o.openingId} opening={o} />)
+        <div className="scroll-region" style={{ maxHeight: 260, overflowY: 'auto', paddingRight: 4 }}>
+          {data.map(o => <CoverageOpeningBlock key={o.openingId} opening={o} />)}
+        </div>
       )}
     </div>
   )
@@ -283,7 +285,7 @@ export default function Dashboard({ user, onStartReview }) {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
 
         {/* Stats row */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+        <div data-tour="stats-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
           <StatCard label="games" value={games.length} color="var(--text0)" />
           <StatCard label="deviations" value={deviations.length} color="var(--red)" />
           <StatCard label="on book" value={onBook.length} color="var(--green)" />
@@ -291,7 +293,7 @@ export default function Dashboard({ user, onStartReview }) {
         </div>
 
         {/* Due today */}
-        <div className="card">
+        <div className="card" data-tour="due-review">
           <div className="card-head">
             Due for review
             <span style={{ color: due.length > 0 ? 'var(--amber)' : 'var(--green)' }}>
@@ -326,7 +328,7 @@ export default function Dashboard({ user, onStartReview }) {
         <CoverageGaps username={username} user={user} />
 
         {/* Deviation heatmap */}
-        <div className="card">
+        <div className="card" data-tour="heatmap">
           <div className="card-head">
             Deviation heatmap
             <span style={{ fontSize: 12, color: 'var(--text4)', textTransform: 'none' }}>
@@ -386,7 +388,7 @@ export default function Dashboard({ user, onStartReview }) {
       </div>
 
       {/* Right column — recent deviations */}
-      <div style={{ width: 290, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div data-tour="recent-deviations" style={{ width: 290, display: 'flex', flexDirection: 'column', gap: 8 }}>
         <div className="card-head" style={{ paddingTop: 2 }}>
           Recent deviations
           {selectedSq && (

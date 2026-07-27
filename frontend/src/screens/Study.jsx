@@ -104,6 +104,7 @@ export default function Study({ initialTarget = null }) {
   const [done, setDone]                       = useState(false)
   const [reviewResult, setReviewResult]       = useState(null) // { intervalDays, nextReview }
   const [reviewing, setReviewing]             = useState(false)
+  const [hintLevel, setHintLevel]             = useState(0) // 0 = none, 1 = source square, 2 = full move
 
   const boardWrapRef = useRef(null)
   const boardSize    = useBoardSize(boardWrapRef)
@@ -160,6 +161,9 @@ export default function Study({ initialTarget = null }) {
       return () => clearTimeout(t)
     }
   }, [step, isPlayerTurn, mode, done, feedback, line, totalMoves])
+
+  // Every new move to guess starts with hints hidden again.
+  useEffect(() => { setHintLevel(0) }, [step, mode, selectedKey, selectedLineIdx])
 
   // Keyboard navigation
   useEffect(() => {
@@ -232,6 +236,15 @@ export default function Study({ initialTarget = null }) {
   const prevBoard    = history[step - 1] ? fenToBoard(history[step - 1]) : null
   const highlightSqs = step > 0 ? changedSquares(prevBoard, board) : []
 
+  // Practice hints — diff the current position against the position after
+  // the expected move to find which square(s) it touches. Level 1 reveals
+  // just the source square (which piece to move); level 2 reveals the
+  // whole move.
+  const expectedBoard = isPlayerTurn && history[step + 1] ? fenToBoard(history[step + 1]) : null
+  const hintMoveSqs   = expectedBoard ? changedSquares(board, expectedBoard) : []
+  const hintFromSqs   = hintMoveSqs.filter(([r, c]) => board[r][c] && !expectedBoard[r][c])
+  const hintSqs       = hintLevel === 2 ? hintMoveSqs : hintLevel === 1 ? hintFromSqs : []
+
   const prevMove  = step > 0 ? line?.moves[step - 1] : null
   const moveLabel = prevMove
     ? `${Math.floor((step - 1) / 2) + 1}${(step - 1) % 2 === 0 ? '.' : '…'} ${prevMove}`
@@ -246,6 +259,10 @@ export default function Study({ initialTarget = null }) {
     statusText = 'Correct!'; statusColor = 'var(--green)'
   } else if (feedback === 'wrong') {
     statusText = `Wrong — the move is ${line?.moves[step]}`; statusColor = 'var(--red)'
+  } else if (hintLevel === 2) {
+    statusText = `Hint: play ${line?.moves[step]}`; statusColor = 'var(--amber)'
+  } else if (hintLevel === 1) {
+    statusText = 'Hint: move the highlighted piece'; statusColor = 'var(--amber)'
   } else if (isPlayerTurn) {
     statusText = `Your turn (${playerColor})`; statusColor = 'var(--text2)'
   } else {
@@ -256,7 +273,7 @@ export default function Study({ initialTarget = null }) {
     <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
 
       {/* ── Sidebar ── */}
-      <div className="sidebar">
+      <div className="sidebar" data-tour="opening-sidebar">
         <div className="sidebar-head">
           <span style={{ fontSize: 13, fontWeight: 500 }}>Openings</span>
         </div>
@@ -271,7 +288,7 @@ export default function Study({ initialTarget = null }) {
       </div>
 
       {/* ── Board area ── */}
-      <div className="board-area" style={{ padding: 12, gap: 10 }}>
+      <div className="board-area" data-tour="study-board" style={{ padding: 12, gap: 10 }}>
         <div
           ref={boardWrapRef}
           style={{ flex: 1, minHeight: 0, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
@@ -281,6 +298,7 @@ export default function Study({ initialTarget = null }) {
             size={boardSize}
             flipped={playerColor === 'black'}
             highlightSqs={highlightSqs}
+            hintSqs={hintSqs}
             onMove={handleMove}
             interactive={isPlayerTurn}
             layers={{ attacks: false, coverage: false, targets: true, hanging: false, winning: false, selection: true }}
@@ -315,8 +333,23 @@ export default function Study({ initialTarget = null }) {
             <button className="bc-btn" onClick={() => setStep(s => Math.min(totalMoves, s + 1))} disabled={mode === 'drill'}>›</button>
           </div>
 
+          {isPlayerTurn && hintLevel < 2 && (
+            <button
+              onClick={() => setHintLevel(h => Math.min(2, h + 1))}
+              title={hintLevel === 0 ? 'Reveal which piece to move' : 'Reveal the full move'}
+              style={{
+                padding: '6px 14px', borderRadius: 7, fontSize: 13, fontFamily: 'inherit',
+                cursor: 'pointer', fontWeight: 500,
+                background: 'rgba(239,159,39,.10)', border: '0.5px solid rgba(239,159,39,.3)', color: 'var(--amber)',
+              }}
+            >
+              💡 {hintLevel === 0 ? 'Hint' : 'Reveal move'}
+            </button>
+          )}
+
           <button
             onClick={mode === 'study' ? enterDrill : enterStudy}
+            data-tour="drill-toggle"
             style={{
               padding: '6px 16px', borderRadius: 7, fontSize: 13, fontFamily: 'inherit',
               cursor: 'pointer', fontWeight: 500, transition: 'all .15s',
@@ -335,7 +368,7 @@ export default function Study({ initialTarget = null }) {
 
         {/* SM-2 rating buttons — shown when drill is complete and no review result yet */}
         {done && mode === 'drill' && !reviewResult && (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: '100%', maxWidth: boardSize }}>
+          <div data-tour="quality-buttons" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: '100%', maxWidth: boardSize }}>
             <div style={{ fontSize: 12, color: 'var(--text4)' }}>How well did you remember this line?</div>
             <div style={{ display: 'flex', gap: 6 }}>
               {QUALITY_BTNS.map(btn => (
@@ -389,7 +422,7 @@ export default function Study({ initialTarget = null }) {
 
           {/* Line tabs */}
           {opening && opening.lines?.length > 1 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 10 }}>
+            <div data-tour="line-tabs" style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 10 }}>
               {opening.lines.map((l, i) => (
                 <button
                   key={i}
@@ -409,7 +442,7 @@ export default function Study({ initialTarget = null }) {
           )}
 
           {/* Move list */}
-          <div className="varpath">
+          <div className="varpath" data-tour="move-list">
             {line?.moves?.map((mv, i) => (
               <span
                 key={i}
@@ -427,7 +460,7 @@ export default function Study({ initialTarget = null }) {
         </div>
 
         {line?.idea && (
-          <div className="rps">
+          <div className="rps" data-tour="idea-panel">
             <div className="rpl">Idea</div>
             <div style={{ fontSize: 12, color: 'var(--text3)', lineHeight: 1.7 }}>{line.idea}</div>
           </div>
