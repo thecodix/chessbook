@@ -27,6 +27,10 @@ class FrequencyCache(Base):
 
 
 class Opening(Base):
+    """Shared catalog content — the same rows are visible to every user.
+    Which openings actually show up in *your* repertoire is controlled by
+    UserOpening; your personal SM-2 progress per line lives in LineProgress.
+    """
     __tablename__ = "openings"
 
     id          = Column(String, primary_key=True)
@@ -41,6 +45,7 @@ class Opening(Base):
 
 
 class Line(Base):
+    """Shared catalog content (a single prepared line within an Opening)."""
     __tablename__ = "lines"
 
     id            = Column(Integer, primary_key=True, autoincrement=True)
@@ -50,7 +55,11 @@ class Line(Base):
     moves         = Column(JSON,   nullable=False)
     idea          = Column(Text,   nullable=True)
 
-    # SM-2 fields
+    # TODO(per-user repertoire): these SM-2 fields are global today (shared
+    # by every account) — once repertoire.py/main.py are updated to read/write
+    # LineProgress instead, these become read-only migration sources and can
+    # eventually be dropped. Left as-is for now so the currently-deployed
+    # repertoire endpoints keep working unchanged.
     ease_factor   = Column(Float,   default=2.5)
     interval_days = Column(Integer, default=1)
     repetitions   = Column(Integer, default=0)
@@ -58,6 +67,34 @@ class Line(Base):
     retention     = Column(Float,   default=0.0)
 
     opening = relationship("Opening", back_populates="lines")
+
+
+class UserOpening(Base):
+    """Marks that a given user has added an Opening to their repertoire."""
+    __tablename__ = "user_openings"
+
+    id         = Column(Integer, primary_key=True, autoincrement=True)
+    user_id    = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    opening_id = Column(String,  ForeignKey("openings.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    __table_args__ = (UniqueConstraint("user_id", "opening_id", name="uq_user_opening"),)
+
+
+class LineProgress(Base):
+    """Per-user SM-2 spaced-repetition state for a single catalog Line."""
+    __tablename__ = "line_progress"
+
+    id            = Column(Integer, primary_key=True, autoincrement=True)
+    user_id       = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    line_id       = Column(Integer, ForeignKey("lines.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    ease_factor   = Column(Float,   default=2.5)
+    interval_days = Column(Integer, default=1)
+    repetitions   = Column(Integer, default=0)
+    next_review   = Column(Date,    default=date.today)
+    retention     = Column(Float,   default=0.0)
+
+    __table_args__ = (UniqueConstraint("user_id", "line_id", name="uq_user_line_progress"),)
 
 
 class Game(Base):

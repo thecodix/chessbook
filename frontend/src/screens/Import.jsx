@@ -473,6 +473,67 @@ function GameCard({ g }) {
   )
 }
 
+// ── Filters ────────────────────────────────────────────────────────────────
+
+const RESULT_FILTERS = [
+  { id: 'all',  label: 'All' },
+  { id: 'win',  label: 'Won' },
+  { id: 'draw', label: 'Drawn' },
+  { id: 'loss', label: 'Lost' },
+]
+
+const LEVEL_FILTERS = [
+  { id: 'all',    label: 'All' },
+  { id: 'same',   label: 'Similar (±100)' },
+  { id: 'lower',  label: 'Lower rated' },
+  { id: 'higher', label: 'Higher rated' },
+]
+
+function matchesResultFilter(g, filter) {
+  if (filter === 'all') return true
+  const label = resultLabel(g)
+  return (filter === 'win' && label === 'Win')
+    || (filter === 'draw' && label === 'Draw')
+    || (filter === 'loss' && label === 'Loss')
+}
+
+function matchesLevelFilter(g, filter) {
+  if (filter === 'all') return true
+  const myRating  = g.isWhite ? g.whiteRating  : g.blackRating
+  const oppRating = g.isWhite ? g.blackRating  : g.whiteRating
+  if (myRating == null || oppRating == null) return false
+  const diff = oppRating - myRating
+  if (filter === 'same')   return Math.abs(diff) <= 100
+  if (filter === 'lower')  return diff < -100
+  if (filter === 'higher') return diff > 100
+  return true
+}
+
+function FilterPills({ options, value, onChange }) {
+  return (
+    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+      {options.map(opt => {
+        const active = value === opt.id
+        return (
+          <button
+            key={opt.id}
+            onClick={() => onChange(opt.id)}
+            style={{
+              padding: '5px 11px', borderRadius: 999, fontSize: 12, fontFamily: 'inherit',
+              cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap',
+              background: active ? 'var(--green-bg)' : 'var(--bg2)',
+              border: `0.5px solid ${active ? 'var(--green-border)' : 'var(--border)'}`,
+              color: active ? 'var(--green)' : 'var(--text3)',
+            }}
+          >
+            {opt.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 // ── Main screen ────────────────────────────────────────────────────────────
 
 export default function Import() {
@@ -483,6 +544,8 @@ export default function Import() {
   const [error,    setError]      = useState(null)
   const [months,   setMonths]     = useState(2)
   const [dbCount,  setDbCount]    = useState(null)  // count loaded from DB on mount
+  const [resultFilter, setResultFilter] = useState('all')
+  const [levelFilter,  setLevelFilter]  = useState('all')
 
   // Load persisted games on mount
   useEffect(() => {
@@ -515,10 +578,12 @@ export default function Import() {
     }
   }
 
-  const deviations = games.filter(g => g.deviation)
-  const onBook     = games.filter(g => !g.deviation)
+  const filteredGames = games.filter(g => matchesResultFilter(g, resultFilter) && matchesLevelFilter(g, levelFilter))
+
+  const deviations = filteredGames.filter(g => g.deviation)
+  const onBook     = filteredGames.filter(g => !g.deviation)
   const avgMyAcc   = (() => {
-    const vals = games
+    const vals = filteredGames
       .map(g => g.accuracy ? (g.isWhite ? g.accuracy.white : g.accuracy.black) : null)
       .filter(v => v != null)
     return vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1) : null
@@ -571,11 +636,30 @@ export default function Import() {
         </div>
       )}
 
-      {/* Summary stats */}
+      {/* Filters */}
       {games.length > 0 && (
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 11, color: 'var(--text4)', flexShrink: 0 }}>Result</span>
+            <FilterPills options={RESULT_FILTERS} value={resultFilter} onChange={setResultFilter} />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 11, color: 'var(--text4)', flexShrink: 0 }}>Opponent level</span>
+            <FilterPills options={LEVEL_FILTERS} value={levelFilter} onChange={setLevelFilter} />
+          </div>
+          {(resultFilter !== 'all' || levelFilter !== 'all') && (
+            <div style={{ fontSize: 11, color: 'var(--text4)' }}>
+              Showing <span style={{ color: 'var(--green)' }}>{filteredGames.length}</span> of {games.length} games
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Summary stats */}
+      {filteredGames.length > 0 && (
         <div style={{ display: 'flex', gap: 8 }}>
           {[
-            { label: 'games',      value: games.length,      color: 'var(--text0)' },
+            { label: 'games',      value: filteredGames.length,      color: 'var(--text0)' },
             { label: 'deviations', value: deviations.length, color: 'var(--red)'   },
             { label: 'on book',    value: onBook.length,     color: 'var(--green)' },
             ...(avgMyAcc ? [{ label: 'avg accuracy', value: `${avgMyAcc}%`, color: 'var(--purple)' }] : []),
@@ -589,12 +673,18 @@ export default function Import() {
       )}
 
       {/* Analytics */}
-      <Analytics games={games} />
+      <Analytics games={filteredGames} />
 
       {/* Game list */}
-      {games.length > 0 && (
+      {filteredGames.length > 0 && (
         <div data-tour="game-list" style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-          {games.map(g => <GameCard key={g.id} g={g} />)}
+          {filteredGames.map(g => <GameCard key={g.id} g={g} />)}
+        </div>
+      )}
+
+      {games.length > 0 && filteredGames.length === 0 && (
+        <div className="card" style={{ textAlign: 'center', padding: 32, color: 'var(--text4)', fontSize: 13 }}>
+          No games match the current filters.
         </div>
       )}
 

@@ -87,10 +87,10 @@ function SolvedModal({ puzzle, onNext, onClose }) {
         </div>
         <div className="solved-actions">
           <button className="btn-ghost" style={{ width: 'auto', padding: '8px 16px' }} onClick={onClose}>
-            Stay here
+            Stay
           </button>
           <button className="btn-green" style={{ width: 'auto', padding: '8px 18px' }} onClick={onNext} autoFocus>
-            Next problem ›
+            Next
           </button>
         </div>
       </div>
@@ -258,7 +258,7 @@ export default function Problems() {
   } else if (hintLevel === 1) {
     statusText = 'Hint: move the highlighted piece'; statusColor = 'var(--amber)'
   } else if (isPlayerTurn) {
-    statusText = `${puzzle.type} — your move (${playerColor})`; statusColor = 'var(--text2)'
+    statusText = 'Your move'; statusColor = 'var(--text2)'
   } else {
     statusText = 'Opponent responding…'
   }
@@ -331,6 +331,43 @@ export default function Problems() {
                 </div>
               )
             })}
+          </div>
+        )}
+
+        {/* Full-width bar: which color is on the move, colored to match that
+            side's pieces, with a pawn badge — kept between the puzzle grid
+            and the board so it's impossible to miss. */}
+        {puzzle && (
+          <div
+            style={{
+              display: 'flex', alignItems: 'center', gap: 10, width: '100%', maxWidth: boardSize,
+              padding: '8px 12px', borderRadius: 8,
+              background: playerColor === 'white' ? '#f0d9b5' : '#2a2a2e',
+              border: '1px solid rgba(0,0,0,0.35)',
+            }}
+          >
+            <span
+              style={{
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
+                background: playerColor === 'white' ? '#2a2a2e' : '#f0d9b5',
+                fontSize: 15, lineHeight: 1,
+                color: playerColor === 'white' ? '#f0d9b5' : '#2a2a2e',
+              }}
+            >
+              {playerColor === 'white' ? '♙' : '♟'}
+            </span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: playerColor === 'white' ? '#2a2a2e' : '#f0d9b5' }}>
+              {playerColor === 'white' ? 'White' : 'Black'} to move
+            </span>
+            <span
+              style={{
+                fontSize: 12, marginLeft: 'auto',
+                color: playerColor === 'white' ? 'rgba(42,42,46,0.65)' : 'rgba(240,217,181,0.65)',
+              }}
+            >
+              {puzzle.type}
+            </span>
           </div>
         )}
 

@@ -426,7 +426,19 @@ export default function Board({
         width={size}
         height={size}
         onClick={handleClick}
-        style={{ display: 'block', borderRadius: 4, border: '0.5px solid #2a2a2e', cursor: (interactive || onSquareClick) ? 'pointer' : 'default' }}
+        style={{
+          display: 'block', borderRadius: 4, border: '0.5px solid #2a2a2e',
+          cursor: (interactive || onSquareClick) ? 'pointer' : 'default',
+          // Mobile browsers paint a default tap-highlight overlay across the
+          // whole tapped element (the entire board, here) on every touch —
+          // desktop mouse clicks never trigger this. `touch-action: manipulation`
+          // also skips the ~300ms double-tap-to-zoom delay, and disabling
+          // user-select stops long-press text-selection callouts on the canvas.
+          WebkitTapHighlightColor: 'transparent',
+          touchAction: 'manipulation',
+          WebkitUserSelect: 'none',
+          userSelect: 'none',
+        }}
       />
       {pendingPromotion && (
         <PromotionPicker
