@@ -88,6 +88,13 @@ export const submitReview   = (openingId, lineId, quality)    =>
     method: 'POST',
     body: JSON.stringify({ lineId, quality }),
   })
+export const getCatalog     = ()                               => req('/repertoire/catalog')
+export const getSelection   = ()                               => req('/repertoire/selection')
+export const updateSelection = (openingIds) =>
+  req('/repertoire/selection', {
+    method: 'POST',
+    body: JSON.stringify({ openingIds }),
+  })
 
 // ── Games ──────────────────────────────────────────────────────────────────────
 

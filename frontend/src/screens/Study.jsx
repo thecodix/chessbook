@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import Board from '../components/Board'
 import { OPENING_LIST, OPENINGS } from '../utils/repertoire'
 import { buildHistory, fenToBoard, stripSan, START_FEN } from '../utils/chess'
-import { getRepertoire, submitReview } from '../utils/api'
+import { getRepertoire, submitReview, getCatalog, getSelection, updateSelection } from '../utils/api'
 
 function useBoardSize(ref) {
   const [size, setSize] = useState(480)
@@ -87,6 +87,95 @@ const QUALITY_BTNS = [
   { label: 'Easy',  quality: 5, color: 'var(--purple)', bg: 'rgba(160,70,210,.10)', border: 'rgba(160,70,210,.3)' },
 ]
 
+function OpeningPicker({ catalog, initialSelection, onSave, onClose }) {
+  const [selected, setSelected] = useState(new Set(initialSelection))
+  const [saving, setSaving]     = useState(false)
+
+  const toggle = (id) => setSelected(prev => {
+    const next = new Set(prev)
+    if (next.has(id)) next.delete(id); else next.add(id)
+    return next
+  })
+
+  const save = async () => {
+    setSaving(true)
+    try {
+      await onSave([...selected])
+      onClose()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const renderGroup = (color, label) => (
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text4)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+        {label}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {catalog.filter(o => o.color === color).map(o => (
+          <label
+            key={o.id}
+            style={{
+              display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 10px', borderRadius: 8,
+              cursor: 'pointer',
+              background: selected.has(o.id) ? 'var(--green-bg)' : 'var(--bg2)',
+              border: `0.5px solid ${selected.has(o.id) ? 'var(--green-border)' : 'var(--border)'}`,
+            }}
+          >
+            <input
+              type='checkbox'
+              checked={selected.has(o.id)}
+              onChange={() => toggle(o.id)}
+              style={{ marginTop: 3 }}
+            />
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 500, color: selected.has(o.id) ? 'var(--green)' : 'var(--text1)' }}>
+                {o.name}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text4)', marginTop: 2 }}>
+                {o.lines.length} line{o.lines.length !== 1 ? 's' : ''}
+              </div>
+            </div>
+          </label>
+        ))}
+      </div>
+    </div>
+  )
+
+  return (
+    <div className="solved-backdrop" onClick={onClose}>
+      <div
+        className="solved-card"
+        onClick={e => e.stopPropagation()}
+        style={{ width: 420, textAlign: 'left', padding: '22px 24px' }}
+      >
+        <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 4 }}>Choose your openings</div>
+        <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 16 }}>
+          Pick one or more openings for each color. Only selected openings show up in your repertoire.
+        </div>
+        <div style={{ maxHeight: '50vh', overflowY: 'auto', paddingRight: 4 }}>
+          {renderGroup('white', 'White')}
+          {renderGroup('black', 'Black')}
+        </div>
+        <div className="solved-actions" style={{ marginTop: 6 }}>
+          <button className="btn-ghost" style={{ width: 'auto', padding: '8px 16px' }} onClick={onClose}>
+            Cancel
+          </button>
+          <button
+            className="btn-green"
+            style={{ width: 'auto', padding: '8px 18px' }}
+            disabled={saving || selected.size === 0}
+            onClick={save}
+          >
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Study({ initialTarget = null }) {
   // Openings state — initialized from static, replaced by API when available
   const [openingList, setOpeningList] = useState(
@@ -106,21 +195,44 @@ export default function Study({ initialTarget = null }) {
   const [reviewing, setReviewing]             = useState(false)
   const [hintLevel, setHintLevel]             = useState(0) // 0 = none, 1 = source square, 2 = full move
 
+  const [showPicker, setShowPicker]           = useState(false)
+  const [catalog, setCatalog]                 = useState(null)
+  const [selection, setSelection]             = useState(null) // openingIds currently selected
+
   const boardWrapRef = useRef(null)
   const boardSize    = useBoardSize(boardWrapRef)
 
-  // Load from API
-  useEffect(() => {
-    getRepertoire()
+  const loadRepertoire = useCallback(() => {
+    return getRepertoire()
       .then(data => {
-        if (!data?.length) return
         const { openingsMap: om, openingList: ol } = apiToOpenings(data)
         setOpeningsMap(om)
         setOpeningList(ol)
-        setSelectedKey(ol[0].key)
+        if (ol.length) setSelectedKey(prev => (om[prev] ? prev : ol[0].key))
         setApiLoaded(true)
       })
       .catch(console.warn)
+  }, [])
+
+  const openPicker = () => {
+    Promise.all([getCatalog(), getSelection()])
+      .then(([catalogData, selectionData]) => {
+        setCatalog(catalogData)
+        setSelection(selectionData.openingIds)
+        setShowPicker(true)
+      })
+      .catch(console.warn)
+  }
+
+  const saveSelection = async (openingIds) => {
+    await updateSelection(openingIds)
+    await loadRepertoire()
+  }
+
+  // Load from API
+  useEffect(() => {
+    loadRepertoire()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const opening     = openingsMap[selectedKey]
@@ -274,18 +386,45 @@ export default function Study({ initialTarget = null }) {
 
       {/* ── Sidebar ── */}
       <div className="sidebar" data-tour="opening-sidebar">
-        <div className="sidebar-head">
+        <div className="sidebar-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ fontSize: 13, fontWeight: 500 }}>Openings</span>
+          <button
+            onClick={openPicker}
+            title="Choose which openings appear in your repertoire"
+            style={{
+              fontSize: 11, padding: '3px 9px', borderRadius: 6, fontFamily: 'inherit', cursor: 'pointer',
+              background: 'var(--bg2)', border: '0.5px solid var(--border)', color: 'var(--text3)',
+            }}
+          >
+            Manage
+          </button>
         </div>
-        <div className="sidebar-section">White</div>
-        {openingList.filter(o => openingsMap[o.key]?.color === 'white').map(o => (
-          <SidebarItem key={o.key} opening={{ ...o, ...openingsMap[o.key] }} active={selectedKey === o.key} onClick={() => selectOpening(o.key)} />
-        ))}
-        <div className="sidebar-section">Black</div>
-        {openingList.filter(o => openingsMap[o.key]?.color === 'black').map(o => (
-          <SidebarItem key={o.key} opening={{ ...o, ...openingsMap[o.key] }} active={selectedKey === o.key} onClick={() => selectOpening(o.key)} />
-        ))}
+        {apiLoaded && openingList.length === 0 ? (
+          <div style={{ padding: '16px 12px', fontSize: 12, color: 'var(--text4)', lineHeight: 1.6 }}>
+            No openings selected yet. Click <strong>Manage</strong> to add some.
+          </div>
+        ) : (
+          <>
+            <div className="sidebar-section">White</div>
+            {openingList.filter(o => openingsMap[o.key]?.color === 'white').map(o => (
+              <SidebarItem key={o.key} opening={{ ...o, ...openingsMap[o.key] }} active={selectedKey === o.key} onClick={() => selectOpening(o.key)} />
+            ))}
+            <div className="sidebar-section">Black</div>
+            {openingList.filter(o => openingsMap[o.key]?.color === 'black').map(o => (
+              <SidebarItem key={o.key} opening={{ ...o, ...openingsMap[o.key] }} active={selectedKey === o.key} onClick={() => selectOpening(o.key)} />
+            ))}
+          </>
+        )}
       </div>
+
+      {showPicker && catalog && selection && (
+        <OpeningPicker
+          catalog={catalog}
+          initialSelection={selection}
+          onSave={saveSelection}
+          onClose={() => setShowPicker(false)}
+        />
+      )}
 
       {/* ── Board area ── */}
       <div className="board-area" data-tour="study-board" style={{ padding: 12, gap: 10 }}>
