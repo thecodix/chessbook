@@ -5,24 +5,62 @@ export const getToken   = ()  => localStorage.getItem(TOKEN_KEY)
 export const setToken   = (t) => localStorage.setItem(TOKEN_KEY, t)
 export const clearToken = ()  => localStorage.removeItem(TOKEN_KEY)
 
+// The backend runs on Render's free instance type, which spins down after
+// ~15 min of inactivity and takes up to ~a minute to spin back up. During
+// that window requests can come back as a 502/503/504, or even a 200 with
+// an HTML "waking up" placeholder body instead of real JSON — retry those
+// transient failures with backoff instead of treating them as permanent
+// (and instead of throwing an opaque JSON-parse error on the HTML body).
+const RETRYABLE_STATUSES = new Set([502, 503, 504])
+const MAX_RETRIES        = 8
+const RETRY_DELAY_MS     = 5000
+
+const sleep = (ms) => new Promise(r => setTimeout(r, ms))
+
 async function req(path, opts = {}) {
   const token   = getToken()
   const headers = { ...(opts.headers || {}) }
   if (token)                                headers['Authorization']  = `Bearer ${token}`
   if (opts.body && !headers['Content-Type']) headers['Content-Type']  = 'application/json'
 
-  const res = await fetch(BASE + path, { ...opts, headers })
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    let res
+    try {
+      res = await fetch(BASE + path, { ...opts, headers })
+    } catch (err) {
+      // Network-level failure (offline, connection reset while the backend
+      // is cold-starting, etc.)
+      if (attempt < MAX_RETRIES) { await sleep(RETRY_DELAY_MS); continue }
+      throw new Error('Could not reach the server. Please check your connection and try again.')
+    }
 
-  if (res.status === 401) {
-    clearToken()
-    window.dispatchEvent(new Event('chessbook:logout'))
-    throw new Error('Session expired — please sign in again.')
+    if (res.status === 401) {
+      clearToken()
+      window.dispatchEvent(new Event('chessbook:logout'))
+      throw new Error('Session expired — please sign in again.')
+    }
+
+    if (RETRYABLE_STATUSES.has(res.status) && attempt < MAX_RETRIES) {
+      await sleep(RETRY_DELAY_MS)
+      continue
+    }
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => res.statusText)
+      throw new Error(text || `HTTP ${res.status}`)
+    }
+
+    if (res.status === 204) return null
+
+    const contentType = res.headers.get('content-type') || ''
+    if (!contentType.includes('application/json')) {
+      if (attempt < MAX_RETRIES) { await sleep(RETRY_DELAY_MS); continue }
+      throw new Error('The server is still waking up — please try again in a moment.')
+    }
+
+    return res.json()
   }
-  if (!res.ok) {
-    const text = await res.text().catch(() => res.statusText)
-    throw new Error(text || `HTTP ${res.status}`)
-  }
-  return res.json()
+  throw new Error('The server took too long to respond. Please try again.')
 }
 
 // ── Auth ───────────────────────────────────────────────────────────────────────

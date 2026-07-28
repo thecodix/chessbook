@@ -117,6 +117,12 @@ export default function Problems() {
   // jumping back from the mate position to the start) as a forward move —
   // which would otherwise animate the piece sliding backwards and spoil it.
   const [resetToken, setResetToken] = useState(0)
+  // Set when loading or saving progress against the backend ultimately
+  // fails (e.g. the Render free-tier backend is unreachable even after
+  // retries) — surfaced to the user instead of being silently swallowed,
+  // since a swallowed save failure looks like "my progress got lost" the
+  // next time the page loads.
+  const [progressError, setProgressError] = useState(null)
 
   const boardWrapRef = useRef(null)
   const boardSize    = useBoardSize(boardWrapRef)
@@ -131,8 +137,9 @@ export default function Problems() {
         const map = {}
         rows.forEach(r => { map[r.puzzleId] = { solved: r.solved, attempts: r.attempts } })
         setProgress(map)
+        setProgressError(null)
       })
-      .catch(console.warn)
+      .catch(err => setProgressError(`Couldn't load your saved progress: ${err.message}`))
   }, [])
 
   const chapter = data?.chapters?.[chapterIdx]
@@ -165,8 +172,11 @@ export default function Problems() {
 
   const markProgress = useCallback((puzzleId, solved) => {
     updateProblemProgress(puzzleId, solved)
-      .then(res => setProgress(p => ({ ...p, [puzzleId]: { solved: res.solved, attempts: res.attempts } })))
-      .catch(console.warn)
+      .then(res => {
+        setProgress(p => ({ ...p, [puzzleId]: { solved: res.solved, attempts: res.attempts } }))
+        setProgressError(null)
+      })
+      .catch(err => setProgressError(`Couldn't save your progress — it wasn't recorded: ${err.message}`))
   }, [])
 
   const handleMove = useCallback((moveResult) => {
@@ -288,6 +298,22 @@ export default function Problems() {
 
       {/* ── Board area ── */}
       <div className="board-area" style={{ padding: 12, gap: 10 }}>
+
+        {progressError && (
+          <div
+            style={{
+              width: '100%', maxWidth: boardSize, fontSize: 12, color: 'var(--red)',
+              background: 'rgba(226,75,74,0.1)', border: '1px solid var(--red)',
+              borderRadius: 6, padding: '6px 10px', display: 'flex',
+              justifyContent: 'space-between', gap: 8, alignItems: 'center',
+            }}
+          >
+            <span>{progressError}</span>
+            <button className="btn-ghost" style={{ width: 'auto', padding: '2px 8px', fontSize: 11 }} onClick={() => setProgressError(null)}>
+              Dismiss
+            </button>
+          </div>
+        )}
 
         {/* Puzzle number picker for the current chapter */}
         {chapter && (

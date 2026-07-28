@@ -493,7 +493,7 @@ export default function Import() {
       .then(data => {
         if (data?.length) { setGames(data); setDbCount(data.length) }
       })
-      .catch(console.warn)
+      .catch(err => setError(`Couldn't load your saved games: ${err.message}`))
       .finally(() => setLoading(false))
   }, [])
 
@@ -560,6 +560,11 @@ export default function Import() {
       {/* Status messages */}
       {error  && <div style={{ color: 'var(--red)',   fontSize: 12 }}>{error}</div>}
       {loading && <div style={{ color: 'var(--text4)', fontSize: 12 }}>Loading saved games…</div>}
+      {importing && (
+        <div style={{ color: 'var(--text4)', fontSize: 12 }}>
+          Importing… if the server has been idle a while this can take up to a minute to wake up.
+        </div>
+      )}
       {dbCount != null && !loading && (
         <div style={{ color: 'var(--text4)', fontSize: 12 }}>
           Loaded <span style={{ color: 'var(--green)' }}>{dbCount}</span> saved games from history.
