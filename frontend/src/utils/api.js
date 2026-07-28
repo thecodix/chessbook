@@ -114,3 +114,13 @@ export const updateProblemProgress = (puzzleId, solved) =>
     method: 'POST',
     body: JSON.stringify({ solved }),
   })
+
+// ── Endgames ───────────────────────────────────────────────────────────────────
+
+export const getEndgamesProgress = () => req('/endgames/progress')
+
+export const updateEndgameProgress = (puzzleId, solved) =>
+  req(`/endgames/progress/${encodeURIComponent(puzzleId)}`, {
+    method: 'POST',
+    body: JSON.stringify({ solved }),
+  })

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import Dashboard  from './screens/Dashboard'
 import Study      from './screens/Study'
 import Problems   from './screens/Problems'
+import Endgames   from './screens/Endgames'
 import Import     from './screens/Import'
 import Login      from './screens/Login'
 import Tour       from './components/Tour'
@@ -16,6 +17,7 @@ const SCREENS = [
   { id: 'dashboard',  label: 'Dashboard' },
   { id: 'repertoire', label: 'Repertoire' },
   { id: 'problems',   label: 'Problems' },
+  { id: 'endgames',   label: 'Endgames' },
   { id: 'import',     label: 'Import games' },
 ]
 
@@ -222,6 +224,7 @@ export default function App() {
         )}
         {screen === 'repertoire' && <Study initialTarget={reviewTarget} />}
         {screen === 'problems'   && <Problems />}
+        {screen === 'endgames'   && <Endgames />}
         {screen === 'import'     && <Import />}
       </main>
 
