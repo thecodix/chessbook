@@ -1,6 +1,6 @@
 import random
 import re
-from typing import Literal, Optional
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict
@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.auth import get_current_user
 from app.database import get_db
 from app.routers.games import _fen_from_prefix
+from app.routers.repertoire import _ensure_default_selection
 from app.sparring_logic import (
     LineInfo, StatsInfo, build_sparring_candidates, select_sparring_node,
 )
@@ -50,6 +51,7 @@ def sparring_next(
     db: Session = Depends(get_db),
     user: models.User = Depends(get_current_user),
 ):
+    _ensure_default_selection(db, user)
     selected_ids = [r[0] for r in db.query(models.UserOpening.opening_id).filter_by(user_id=user.id).all()]
     rows = (
         db.query(models.Line, models.Opening)

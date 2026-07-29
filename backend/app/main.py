@@ -32,7 +32,7 @@ app.include_router(games.router,      prefix="/api/games",      tags=["games"])
 app.include_router(analysis.router,   prefix="/api/analysis",   tags=["analysis"])
 app.include_router(problems.router,   prefix="/api/problems",   tags=["problems"])
 app.include_router(endgames.router,   prefix="/api/endgames",   tags=["endgames"])
-app.include_router(sparring.router,    prefix="/api/sparring",    tags=["sparring"])
+app.include_router(sparring.router,   prefix="/api/sparring",   tags=["sparring"])
 
 
 @app.get("/api/health")

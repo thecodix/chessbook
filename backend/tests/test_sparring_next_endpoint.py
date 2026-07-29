@@ -42,6 +42,22 @@ def test_sparring_next_returns_a_position(client, db_session, test_user):
     assert body["fen"].split(" ")[1] == "w"   # ply_index=2 -> White to move next
 
 
+def test_sparring_next_defaults_a_fresh_user_into_the_full_catalog(client, db_session, test_user):
+    """A brand-new user who visits Sparring before ever touching the
+    Repertoire tab has zero UserOpening rows. They should still see every
+    catalog opening by default (mirrors repertoire.py's own routes via
+    _ensure_default_selection), not a false 404."""
+    opening = models.Opening(id="op1", name="Op1", color="white")
+    line = models.Line(opening_id="op1", label="L1", moves=["e4", "e5", "Nf3", "Nc6"])
+    db_session.add_all([opening, line])
+    db_session.commit()
+    # Deliberately no models.UserOpening row seeded here.
+
+    resp = client.get("/api/sparring/next?color=white")
+    assert resp.status_code == 200
+    assert resp.json()["openingId"] == "op1"
+
+
 def test_sparring_next_ignores_openings_not_in_the_users_selection(client, db_session, test_user):
     selected = models.Opening(id="op1", name="Selected", color="white")
     unselected = models.Opening(id="op2", name="Unselected", color="white")
