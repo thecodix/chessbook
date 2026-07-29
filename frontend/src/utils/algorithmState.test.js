@@ -69,4 +69,20 @@ describe('algorithmReducer', () => {
     const dirty = { ...initialAlgorithmState, status: 'checkmate', positionId: 'bishop-1' }
     expect(algorithmReducer(dirty, { type: 'reset' })).toEqual(initialAlgorithmState)
   })
+
+  it('started from failed status clears failReason and error', () => {
+    const failed = { ...initialAlgorithmState, status: 'failed', failReason: 'stalemate', error: 'some error' }
+    const next = algorithmReducer(failed, { type: 'started', payload: START })
+    expect(next.status).toBe('awaiting-move')
+    expect(next.failReason).toBe(null)
+    expect(next.error).toBe(null)
+    expect(next.positionId).toBe('bishop-1')
+    expect(next.fen).toBe('FEN0')
+  })
+
+  it('unrecognized action type returns state unchanged', () => {
+    const state = { ...initialAlgorithmState, status: 'thinking', fen: 'FEN1' }
+    const next = algorithmReducer(state, { type: 'unknown-action' })
+    expect(next).toEqual(state)
+  })
 })
