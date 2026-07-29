@@ -137,8 +137,8 @@ export const updateEndgameProgress = (puzzleId, solved) =>
 export const getSparringNext = (color) =>
   req(`/sparring/next?color=${encodeURIComponent(color)}`)
 
-export const evaluateSparringMove = (lineId, plyIndex, movePlayed) =>
+export const evaluateSparringMove = (lineId, plyIndex, movePlayed, movesSoFar) =>
   req('/sparring/evaluate', {
     method: 'POST',
-    body: JSON.stringify({ lineId, plyIndex, movePlayed }),
+    body: JSON.stringify({ lineId, plyIndex, movePlayed, movesSoFar }),
   })

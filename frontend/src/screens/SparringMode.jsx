@@ -29,12 +29,18 @@ export default function SparringMode() {
 
   const handleMove = async (moveResult) => {
     if (state.status !== 'awaiting-move') return
+    const preMoveFen = state.fen
+    // Render the user's own move (and lock the board) right away — chess.js
+    // has already computed the resulting fen — instead of waiting for the
+    // /evaluate round-trip to complete.
+    dispatch({ type: 'moved', payload: { fen: moveResult.fen } })
     try {
-      const evaluation = await evaluateSparringMove(state.lineId, state.plyIndex, moveResult.san)
-      dispatch({ type: 'evaluated', payload: evaluation })
+      const evaluation = await evaluateSparringMove(state.lineId, state.plyIndex, moveResult.san, state.movesSoFar)
+      dispatch({ type: 'evaluated', payload: { ...evaluation, movePlayed: moveResult.san } })
       setError(null)
       setTimeout(() => dispatch({ type: 'advanced' }), 900)
     } catch {
+      dispatch({ type: 'move-failed', payload: { fen: preMoveFen } })
       setError('Could not submit your move — please try again.')
     }
   }

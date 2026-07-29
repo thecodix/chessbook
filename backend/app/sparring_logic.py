@@ -39,8 +39,9 @@ def _is_user_ply(ply_index: int, color: str) -> bool:
 def _divergence_map(lines: list[LineInfo], color: str) -> dict:
     """(opening_id, prefix) -> set of distinct next moves, at user-move plies
     only. A size >= 2 means the user could plausibly transpose between two
-    of their own known lines at that position — see implementation.md's
-    Fase 2 correction on why this must gate the 'free rival' value."""
+    of their own known lines at that position — see
+    docs/superpowers/plans/2026-07-29-sparring-mode.md's Fase 2 correction
+    on why this must gate the 'free rival' value."""
     divergence: dict = {}
     for line in lines:
         for i in range(len(line.moves)):
@@ -119,10 +120,18 @@ def choose_opponent_move(
 def count_divergent_positions(lines: list[LineInfo], color: str) -> int:
     """How many (opening, prefix) positions have >= 2 distinct next moves
     across `lines` — the real gauge of how much value the Fase 3 'free
-    rival' adds today. See implementation.md's closing analysis: 24 lines
-    across 5 openings as of this writing."""
+    rival' adds. This is a runtime measurement over whatever catalog is
+    passed in, not a fixed snapshot — see
+    docs/superpowers/plans/2026-07-29-sparring-mode.md's closing analysis
+    for how to interpret it. Only counts positions with ply_index >= 2,
+    matching build_sparring_candidates's exclusion of the first two plies —
+    otherwise this would overstate how many positions can actually be
+    served."""
     divergence = _divergence_map(lines, color)
-    return sum(1 for options in divergence.values() if len(options) >= 2)
+    return sum(
+        1 for (_, prefix), options in divergence.items()
+        if len(prefix) >= 2 and len(options) >= 2
+    )
 
 
 def classify_user_move(

@@ -24,12 +24,14 @@ describe('sparring api client', () => {
     )
   })
 
-  it('evaluateSparringMove POSTs the move payload as camelCase JSON', async () => {
+  it('evaluateSparringMove POSTs the move payload (incl. the real path so far) as camelCase JSON', async () => {
     global.fetch.mockReturnValue(jsonResponse({ result: 'correct' }))
-    await evaluateSparringMove(7, 3, 'd6')
+    await evaluateSparringMove(7, 3, 'd6', ['e4', 'c5', 'Nf3'])
     const [url, opts] = global.fetch.mock.calls[0]
     expect(url).toBe('/api/sparring/evaluate')
     expect(opts.method).toBe('POST')
-    expect(JSON.parse(opts.body)).toEqual({ lineId: 7, plyIndex: 3, movePlayed: 'd6' })
+    expect(JSON.parse(opts.body)).toEqual({
+      lineId: 7, plyIndex: 3, movePlayed: 'd6', movesSoFar: ['e4', 'c5', 'Nf3'],
+    })
   })
 })

@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 from sqlalchemy.orm import Session
 
@@ -113,9 +113,18 @@ def sparring_next(
 class SparringEvaluateIn(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
-    line_id:     int
-    ply_index:   int
-    move_played: str
+    line_id:       int
+    ply_index:     int = Field(ge=0)
+    move_played:   str
+    # The actual path played so far in THIS session (not necessarily the seed
+    # line's own continuation — the rival's reply is chosen from among
+    # sibling lines and can diverge after move 1). Authoritative for
+    # reconstructing the board position; line_id/ply_index are kept only for
+    # the SparringStats composite-key attribution below, never for replaying
+    # moves. Defaults to [] so older/degenerate calls don't 422, though any
+    # ply_index > 0 without a matching moves_so_far will simply fail to match
+    # any sibling line.
+    moves_so_far:  list[str] = []
 
 
 class SparringEvaluateOut(BaseModel):
@@ -137,14 +146,27 @@ def sparring_evaluate(
     if not line:
         raise HTTPException(404, "Line not found")
 
+    _ensure_default_selection(db, user)
+    owns_opening = db.query(models.UserOpening).filter_by(
+        user_id=user.id, opening_id=line.opening_id,
+    ).first()
+    if owns_opening is None:
+        raise HTTPException(404, "Opening not in your repertoire selection")
+
     sibling_lines = db.query(models.Line).filter_by(opening_id=line.opening_id).all()
     stripped_by_line = {sib.id: _stripped_moves(sib) for sib in sibling_lines}
 
-    prefix = stripped_by_line[line.id][: body.ply_index]
-    matching = [mv for mv in stripped_by_line.values() if mv[: body.ply_index] == prefix]
+    # `prefix` is the ACTUAL path played so far in this session, as reported
+    # by the client — not re-derived from the seed line's own move list,
+    # which can diverge from the real game after the rival's first reply
+    # (see choose_opponent_move). Its length is used positionally in place
+    # of body.ply_index everywhere except the SparringStats key below.
+    prefix = [_strip_san(m) for m in body.moves_so_far]
+    ply = len(prefix)
+    matching = [mv for mv in stripped_by_line.values() if mv[:ply] == prefix]
 
     move_played = _strip_san(body.move_played)
-    result = classify_user_move(matching, body.ply_index, move_played)
+    result = classify_user_move(matching, ply, move_played)
 
     stats = db.query(models.SparringStats).filter_by(
         user_id=user.id, line_id=body.line_id, ply_index=body.ply_index,
@@ -165,8 +187,8 @@ def sparring_evaluate(
     opponent_move: Optional[str] = None
     opponent_fen:  Optional[str] = None
     if result == "correct":
-        continuing = [mv for mv in matching if len(mv) > body.ply_index and mv[body.ply_index] == move_played]
-        opponent_move = choose_opponent_move(continuing, body.ply_index + 1, random.Random())
+        continuing = [mv for mv in matching if len(mv) > ply and mv[ply] == move_played]
+        opponent_move = choose_opponent_move(continuing, ply + 1, random.Random())
         if opponent_move is not None:
             opponent_fen = _fen_from_prefix(prefix + [move_played, opponent_move])
 
