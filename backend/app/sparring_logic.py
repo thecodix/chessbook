@@ -99,3 +99,32 @@ def select_sparring_node(
         return None
     weights = [c.weight for c in candidates]
     return rng.choices(candidates, weights=weights, k=1)[0]
+
+
+def choose_opponent_move(
+    matching_lines: list,
+    ply_index: int,
+    rng: random.Random,
+) -> Optional[str]:
+    """Fase 3 Option A: the rival picks uniformly among whichever of the
+    user's OWN repertoire lines still have a recorded move at ply_index,
+    given `matching_lines` already filtered to ones consistent with the
+    game so far. None means the user's book ends here."""
+    options = [line[ply_index] for line in matching_lines if len(line) > ply_index]
+    if not options:
+        return None
+    return rng.choice(options)
+
+
+def classify_user_move(
+    matching_lines: list,
+    ply_index: int,
+    move_played: str,
+) -> str:
+    """'correct' if move_played matches ANY sibling line's move at
+    ply_index — covers transposing into a different known line that shares
+    the same prefix. 'unknown' otherwise (no engine in v1)."""
+    for line in matching_lines:
+        if len(line) > ply_index and line[ply_index] == move_played:
+            return "correct"
+    return "unknown"
