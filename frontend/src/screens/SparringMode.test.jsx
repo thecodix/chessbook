@@ -22,4 +22,14 @@ describe('SparringMode', () => {
     await waitFor(() => expect(api.getSparringNext).toHaveBeenCalledWith('black'))
     expect(await screen.findByText(/Sicilian Dragon/i)).toBeInTheDocument()
   })
+
+  it('shows an error message when fetching the next position fails', async () => {
+    api.getSparringNext.mockRejectedValue(new Error('network down'))
+
+    render(<SparringMode />)
+    fireEvent.click(screen.getByText(/start/i))
+
+    await waitFor(() => expect(api.getSparringNext).toHaveBeenCalled())
+    expect(await screen.findByText(/could not load a position/i)).toBeInTheDocument()
+  })
 })

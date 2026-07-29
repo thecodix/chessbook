@@ -12,12 +12,16 @@ export default function SparringMode() {
   const [color, setColor] = useState('white')
   const [state, dispatch] = useReducer(sparringReducer, initialSparringState)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
 
   const start = async () => {
     setLoading(true)
     try {
       const next = await getSparringNext(color)
       dispatch({ type: 'started', payload: next })
+      setError(null)
+    } catch {
+      setError('Could not load a position — please try again.')
     } finally {
       setLoading(false)
     }
@@ -25,13 +29,22 @@ export default function SparringMode() {
 
   const handleMove = async (moveResult) => {
     if (state.status !== 'awaiting-move') return
-    const evaluation = await evaluateSparringMove(state.lineId, state.plyIndex, moveResult.san)
-    dispatch({ type: 'evaluated', payload: evaluation })
-    setTimeout(() => dispatch({ type: 'advanced' }), 900)
+    try {
+      const evaluation = await evaluateSparringMove(state.lineId, state.plyIndex, moveResult.san)
+      dispatch({ type: 'evaluated', payload: evaluation })
+      setError(null)
+      setTimeout(() => dispatch({ type: 'advanced' }), 900)
+    } catch {
+      setError('Could not submit your move — please try again.')
+    }
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, padding: 24 }}>
+      {error && (
+        <div role="alert" style={{ color: 'var(--red)' }}>{error}</div>
+      )}
+
       {state.status === 'idle' && (
         <>
           <div style={{ display: 'flex', gap: 8 }}>
