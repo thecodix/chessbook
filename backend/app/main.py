@@ -6,7 +6,7 @@ import chess.engine
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import repertoire, games, users, analysis, problems, endgames
+from app.routers import repertoire, games, users, analysis, problems, endgames, sparring
 from app.database import Base, engine, SessionLocal
 from app import models  # noqa: F401 — registers models with metadata
 
@@ -32,6 +32,7 @@ app.include_router(games.router,      prefix="/api/games",      tags=["games"])
 app.include_router(analysis.router,   prefix="/api/analysis",   tags=["analysis"])
 app.include_router(problems.router,   prefix="/api/problems",   tags=["problems"])
 app.include_router(endgames.router,   prefix="/api/endgames",   tags=["endgames"])
+app.include_router(sparring.router,    prefix="/api/sparring",    tags=["sparring"])
 
 
 @app.get("/api/health")
