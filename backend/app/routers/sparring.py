@@ -1,6 +1,7 @@
 import random
 import re
-from typing import Literal
+from datetime import datetime
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict
@@ -13,6 +14,7 @@ from app.routers.games import _fen_from_prefix
 from app.routers.repertoire import _ensure_default_selection
 from app.sparring_logic import (
     LineInfo, StatsInfo, build_sparring_candidates, select_sparring_node,
+    choose_opponent_move, classify_user_move,
 )
 from app import models
 
@@ -105,4 +107,70 @@ def sparring_next(
     return SparringNextOut(
         line_id=line.id, opening_id=opening.id, opening_name=opening.name,
         ply_index=chosen.ply_index, fen=fen, color=color, moves_so_far=prefix,
+    )
+
+
+class SparringEvaluateIn(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+    line_id:     int
+    ply_index:   int
+    move_played: str
+
+
+class SparringEvaluateOut(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+    result:         str
+    opponent_move:  Optional[str] = None
+    opponent_fen:   Optional[str] = None
+    session_over:   bool
+
+
+@router.post("/evaluate", response_model=SparringEvaluateOut)
+def sparring_evaluate(
+    body: SparringEvaluateIn,
+    db: Session = Depends(get_db),
+    user: models.User = Depends(get_current_user),
+):
+    line = db.query(models.Line).filter_by(id=body.line_id).first()
+    if not line:
+        raise HTTPException(404, "Line not found")
+
+    sibling_lines = db.query(models.Line).filter_by(opening_id=line.opening_id).all()
+    stripped_by_line = {sib.id: _stripped_moves(sib) for sib in sibling_lines}
+
+    prefix = stripped_by_line[line.id][: body.ply_index]
+    matching = [mv for mv in stripped_by_line.values() if mv[: body.ply_index] == prefix]
+
+    move_played = _strip_san(body.move_played)
+    result = classify_user_move(matching, body.ply_index, move_played)
+
+    stats = db.query(models.SparringStats).filter_by(
+        user_id=user.id, line_id=body.line_id, ply_index=body.ply_index,
+    ).first()
+    if stats is None:
+        stats = models.SparringStats(
+            user_id=user.id, line_id=body.line_id, ply_index=body.ply_index,
+            sparring_attempts=0, sparring_correct=0,
+        )
+        db.add(stats)
+    stats.sparring_attempts += 1
+    if result == "correct":
+        stats.sparring_correct += 1
+    stats.last_sparring_result = result
+    stats.last_attempt_at = datetime.utcnow()
+    db.commit()
+
+    opponent_move: Optional[str] = None
+    opponent_fen:  Optional[str] = None
+    if result == "correct":
+        continuing = [mv for mv in matching if len(mv) > body.ply_index and mv[body.ply_index] == move_played]
+        opponent_move = choose_opponent_move(continuing, body.ply_index + 1, random.Random())
+        if opponent_move is not None:
+            opponent_fen = _fen_from_prefix(prefix + [move_played, opponent_move])
+
+    return SparringEvaluateOut(
+        result=result, opponent_move=opponent_move, opponent_fen=opponent_fen,
+        session_over=(result != "correct" or opponent_move is None),
     )
