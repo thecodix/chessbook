@@ -132,6 +132,12 @@ export const updateEndgameProgress = (puzzleId, solved) =>
     body: JSON.stringify({ solved }),
   })
 
+export const getEngineMove = (fen) =>
+  req('/endgames/engine-move', {
+    method: 'POST',
+    body: JSON.stringify({ fen }),
+  })
+
 // ── Sparring ───────────────────────────────────────────────────────────────────
 
 export const getSparringNext = (color) =>
