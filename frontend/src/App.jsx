@@ -4,6 +4,7 @@ import Study      from './screens/Study'
 import Problems   from './screens/Problems'
 import Endgames   from './screens/Endgames'
 import Import     from './screens/Import'
+import SparringMode from './screens/SparringMode'
 import Login      from './screens/Login'
 import Tour       from './components/Tour'
 import PieceStylePicker from './components/PieceStylePicker'
@@ -16,6 +17,7 @@ const TOUR_DONE_KEY = 'chessbook_tour_done'
 const SCREENS = [
   { id: 'dashboard',  label: 'Dashboard' },
   { id: 'repertoire', label: 'Repertoire' },
+  { id: 'sparring',   label: 'Sparring' },
   { id: 'problems',   label: 'Problems' },
   { id: 'endgames',   label: 'Endgames' },
   { id: 'import',     label: 'Import games' },
@@ -223,6 +225,7 @@ export default function App() {
           />
         )}
         {screen === 'repertoire' && <Study initialTarget={reviewTarget} />}
+        {screen === 'sparring'   && <SparringMode />}
         {screen === 'problems'   && <Problems />}
         {screen === 'endgames'   && <Endgames />}
         {screen === 'import'     && <Import />}

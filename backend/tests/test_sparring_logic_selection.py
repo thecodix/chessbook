@@ -2,6 +2,7 @@ import random
 from datetime import datetime, timedelta
 
 from app.sparring_logic import LineInfo, StatsInfo, build_sparring_candidates, select_sparring_node
+from app.sparring_logic import count_divergent_positions
 
 
 def _line(line_id, opening_id, moves, repetitions=0):
@@ -50,3 +51,12 @@ def test_select_sparring_node_is_deterministic_given_the_same_rng_seed():
     a = select_sparring_node(candidates, random.Random(42))
     b = select_sparring_node(candidates, random.Random(42))
     assert (a.line_id, a.ply_index) == (b.line_id, b.ply_index)
+
+
+def test_count_divergent_positions():
+    lines = [
+        _line(1, "op", ["e4", "c5", "Nf3", "d6"]),
+        _line(2, "op", ["e4", "c5", "Nc3", "Nc6"]),
+        _line(3, "op2", ["d4", "d5", "Bf4", "Nf6"]),
+    ]
+    assert count_divergent_positions(lines, color="white") == 1

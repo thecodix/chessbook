@@ -116,6 +116,15 @@ def choose_opponent_move(
     return rng.choice(options)
 
 
+def count_divergent_positions(lines: list[LineInfo], color: str) -> int:
+    """How many (opening, prefix) positions have >= 2 distinct next moves
+    across `lines` — the real gauge of how much value the Fase 3 'free
+    rival' adds today. See implementation.md's closing analysis: 24 lines
+    across 5 openings as of this writing."""
+    divergence = _divergence_map(lines, color)
+    return sum(1 for options in divergence.values() if len(options) >= 2)
+
+
 def classify_user_move(
     matching_lines: list,
     ply_index: int,
