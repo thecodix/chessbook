@@ -15,6 +15,7 @@ export default defineConfig({
     }
   },
   test: {
+    // happy-dom instead of jsdom: jsdom hangs on initialization in WSL environments
     environment: 'happy-dom',
     globals: true,
     setupFiles: './src/test-setup.js',
