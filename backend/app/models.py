@@ -97,6 +97,23 @@ class LineProgress(Base):
     __table_args__ = (UniqueConstraint("user_id", "line_id", name="uq_user_line_progress"),)
 
 
+class SparringStats(Base):
+    """Per-user, per-(line, ply) practice stats for Sparring mode. Kept
+    fully separate from LineProgress/Line's SM-2 fields on purpose — sparring
+    is a reinforcement signal, never an input to the spaced-repetition
+    schedule for the linear drill mode."""
+    __tablename__ = "sparring_stats"
+
+    user_id   = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    line_id   = Column(Integer, ForeignKey("lines.id", ondelete="CASCADE"), primary_key=True)
+    ply_index = Column(Integer, primary_key=True)
+
+    sparring_attempts    = Column(Integer, default=0, nullable=False)
+    sparring_correct     = Column(Integer, default=0, nullable=False)
+    last_sparring_result = Column(String,  nullable=True)   # "correct" | "unknown"
+    last_attempt_at      = Column(DateTime, nullable=True)
+
+
 class Game(Base):
     __tablename__ = "games"
 
