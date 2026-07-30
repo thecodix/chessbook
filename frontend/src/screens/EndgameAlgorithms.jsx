@@ -26,6 +26,14 @@ const FAIL_MESSAGE = {
 export default function EndgameAlgorithms() {
   const [data, setData] = useState(null)
   const [progress, setProgress] = useState({})
+  // Set when saving progress against the backend fails after a
+  // checkmate/stalemate/draw — surfaced to the user instead of being
+  // silently swallowed, since a swallowed save failure looks like "my win
+  // wasn't recorded" the next time the page loads. Deliberately separate
+  // from `state.error` (algorithmState's move/engine-reply failure path) —
+  // same separation-of-concerns principle as `error` vs `failReason` in the
+  // reducer: this tracks the progress-save path, not the move path.
+  const [progressError, setProgressError] = useState(null)
   const [state, dispatch] = useReducer(algorithmReducer, initialAlgorithmState)
   const boardWrapRef = useRef(null)
   const boardSize = useBoardSize(boardWrapRef)
@@ -48,6 +56,15 @@ export default function EndgameAlgorithms() {
     dispatch({ type: 'started', payload: { positionId: position.id, label: position.label, fen: position.fen } })
   }, [])
 
+  const markProgress = useCallback((positionId, solved) => {
+    updateEndgameProgress(positionId, solved)
+      .then(res => {
+        setProgress(p => ({ ...p, [positionId]: { solved: res.solved, attempts: res.attempts } }))
+        setProgressError(null)
+      })
+      .catch(err => setProgressError(`Couldn't save your progress — it wasn't recorded: ${err.message}`))
+  }, [])
+
   const handleMove = useCallback(async (moveResult) => {
     if (state.status !== 'awaiting-move') return
     dispatch({ type: 'moved', payload: { fen: moveResult.fen } })
@@ -55,14 +72,14 @@ export default function EndgameAlgorithms() {
       const reply = await getEngineMove(moveResult.fen)
       dispatch({ type: 'replied', payload: reply })
       if (reply.status === 'checkmate') {
-        updateEndgameProgress(state.positionId, true).catch(console.warn)
+        markProgress(state.positionId, true)
       } else if (reply.status === 'stalemate' || reply.status === 'draw') {
-        updateEndgameProgress(state.positionId, false).catch(console.warn)
+        markProgress(state.positionId, false)
       }
     } catch (err) {
       dispatch({ type: 'failed', payload: { message: err.message || 'Could not reach the server — please try again.' } })
     }
-  }, [state.status, state.positionId])
+  }, [state.status, state.positionId, markProgress])
 
   return (
     <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
@@ -88,6 +105,22 @@ export default function EndgameAlgorithms() {
       </div>
 
       <div className="board-area" style={{ padding: 12, gap: 10 }}>
+        {progressError && (
+          <div
+            style={{
+              width: '100%', maxWidth: boardSize, fontSize: 12, color: 'var(--red)',
+              background: 'rgba(226,75,74,0.1)', border: '1px solid var(--red)',
+              borderRadius: 6, padding: '6px 10px', display: 'flex',
+              justifyContent: 'space-between', gap: 8, alignItems: 'center',
+            }}
+          >
+            <span>{progressError}</span>
+            <button className="btn-ghost" style={{ width: 'auto', padding: '2px 8px', fontSize: 11 }} onClick={() => setProgressError(null)}>
+              Dismiss
+            </button>
+          </div>
+        )}
+
         {state.error && (
           <div style={{ width: '100%', maxWidth: boardSize, fontSize: 12, color: 'var(--red)' }}>
             {state.error}
