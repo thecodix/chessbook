@@ -1,4 +1,5 @@
 import chess
+import pytest
 
 from app.algorithms_logic import classify_position
 
@@ -29,3 +30,33 @@ def test_classify_position_returns_none_for_an_ongoing_game():
 
 def test_classify_position_returns_none_for_the_starting_position():
     assert classify_position(chess.Board().fen()) is None
+
+
+def test_classify_position_detects_insufficient_material():
+    # K+B vs. lone K — the user blundered their bishop and can never force
+    # checkmate anymore. Verified non-terminal otherwise: not check, not
+    # stalemate (5 legal moves for the black king).
+    fen = "4k3/8/8/8/8/8/8/4KB2 b - - 0 40"
+    board = chess.Board(fen)
+    assert not board.is_check()
+    assert not board.is_stalemate()
+    assert classify_position(fen) == "insufficient_material"
+
+
+def test_classify_position_raises_on_malformed_fen():
+    # Pure function keeps a simple contract: it raises on bad input. It's
+    # the endpoint's job (the actual system boundary) to catch this and
+    # translate it into a proper HTTP error, not this function's.
+    with pytest.raises(ValueError):
+        classify_position("not-a-fen")
+
+
+def test_classify_position_returns_none_when_in_check_but_not_checkmate():
+    # 1.e4 e5 2.Qh5 g6 3.Qxe5+ — Black is in check but has legal replies
+    # (Ne7, Be7, Qe7). Must not be misclassified as checkmate.
+    board = chess.Board()
+    for move in ("e4", "e5", "Qh5", "g6", "Qxe5+"):
+        board.push_san(move)
+    assert board.is_check()
+    assert not board.is_checkmate()
+    assert classify_position(board.fen()) is None

@@ -21,7 +21,10 @@ function useBoardSize(ref) {
 const FAIL_MESSAGE = {
   stalemate: 'Stalemate — the lone king had no legal move but wasn’t in check. Avoid boxing it in without checking it.',
   draw: 'Draw by the 75-move rule — you weren’t making progress toward mate.',
+  insufficient_material: 'You lost a bishop — a king and a single bishop can never force checkmate alone.',
 }
+
+const FAILURE_STATUSES = new Set(['stalemate', 'draw', 'insufficient_material'])
 
 export default function EndgameAlgorithms() {
   const [data, setData] = useState(null)
@@ -73,7 +76,7 @@ export default function EndgameAlgorithms() {
       dispatch({ type: 'replied', payload: reply })
       if (reply.status === 'checkmate') {
         markProgress(state.positionId, true)
-      } else if (reply.status === 'stalemate' || reply.status === 'draw') {
+      } else if (FAILURE_STATUSES.has(reply.status)) {
         markProgress(state.positionId, false)
       }
     } catch (err) {

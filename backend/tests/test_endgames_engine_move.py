@@ -42,6 +42,15 @@ def test_engine_move_503s_when_engine_unavailable(client, stockfish_state):
     assert resp.status_code == 503
 
 
+def test_engine_move_400s_on_malformed_fen(client, stockfish_state):
+    fake = _FakeEngine(reply_move=None)
+    stockfish_state.stockfish = fake
+
+    resp = client.post("/api/endgames/engine-move", json={"fen": "not-a-fen"})
+    assert resp.status_code == 400
+    assert fake.play_called is False
+
+
 def test_engine_move_returns_checkmate_without_calling_the_engine(client, stockfish_state):
     fen = "rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3"  # Fool's Mate
     fake = _FakeEngine(reply_move=None)

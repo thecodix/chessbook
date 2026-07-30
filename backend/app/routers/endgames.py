@@ -70,7 +70,11 @@ def update_progress(
 
 # ── Endgame Algorithms (live engine) ────────────────────────────────────────────
 
-ENGINE_MOVE_LIMIT = chess.engine.Limit(depth=22)  # deep relative to analysis.py's 0.5s quick-eval budget
+# depth=22 is the primary target (deep relative to analysis.py's 0.5s quick-eval
+# budget); time=3.0 is a worst-case safety net so an arbitrary client-supplied
+# FEN (not just a drill position) can't hold stockfish_lock — shared with
+# /api/analysis/deviation — for an unbounded amount of time.
+ENGINE_MOVE_LIMIT = chess.engine.Limit(depth=22, time=3.0)
 
 
 class EngineMoveIn(BaseModel):
@@ -80,6 +84,7 @@ class EngineMoveIn(BaseModel):
 
 class EngineMoveOut(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    # status: "checkmate" | "stalemate" | "insufficient_material" | "draw" | "in_progress"
     status:      str
     engine_move: Optional[str] = None
     fen:         Optional[str] = None
@@ -91,7 +96,10 @@ async def engine_move(
     request: Request,
     user: models.User = Depends(get_current_user),
 ):
-    status = classify_position(body.fen)
+    try:
+        status = classify_position(body.fen)
+    except ValueError:
+        raise HTTPException(400, "Invalid FEN")
     if status is not None:
         return EngineMoveOut(status=status)
 
@@ -99,9 +107,15 @@ async def engine_move(
     if engine_proc is None:
         raise HTTPException(503, "Stockfish engine is not available on this server")
 
-    board = chess.Board(body.fen)
+    board = chess.Board(body.fen)  # already validated above via classify_position
     async with request.app.state.stockfish_lock:
         result = await engine_proc.play(board, ENGINE_MOVE_LIMIT)
+
+    if result.move is None:
+        # Shouldn't happen given the classify_position pre-check above (a
+        # non-terminal position always has a legal move), but guard
+        # defensively rather than let board.san(None) raise AttributeError.
+        raise HTTPException(500, "Engine returned no move")
 
     engine_move_san = board.san(result.move)
     board.push(result.move)
