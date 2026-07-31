@@ -126,10 +126,10 @@ export const updateProblemProgress = (puzzleId, solved) =>
 
 export const getEndgamesProgress = () => req('/endgames/progress')
 
-export const updateEndgameProgress = (puzzleId, solved) =>
+export const updateEndgameProgress = (puzzleId, solved, { trackStreak = false } = {}) =>
   req(`/endgames/progress/${encodeURIComponent(puzzleId)}`, {
     method: 'POST',
-    body: JSON.stringify({ solved }),
+    body: JSON.stringify({ solved, trackStreak }),
   })
 
 export const getEngineMove = (fen) =>

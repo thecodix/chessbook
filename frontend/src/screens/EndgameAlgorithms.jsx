@@ -49,7 +49,7 @@ export default function EndgameAlgorithms() {
     getEndgamesProgress()
       .then(rows => {
         const map = {}
-        rows.forEach(r => { map[r.puzzleId] = { solved: r.solved, attempts: r.attempts } })
+        rows.forEach(r => { map[r.puzzleId] = { solved: r.solved, attempts: r.attempts, wins: r.wins, winStreak: r.winStreak } })
         setProgress(map)
       })
       .catch(console.warn)
@@ -60,9 +60,9 @@ export default function EndgameAlgorithms() {
   }, [])
 
   const markProgress = useCallback((positionId, solved) => {
-    updateEndgameProgress(positionId, solved)
+    updateEndgameProgress(positionId, solved, { trackStreak: true })
       .then(res => {
-        setProgress(p => ({ ...p, [positionId]: { solved: res.solved, attempts: res.attempts } }))
+        setProgress(p => ({ ...p, [positionId]: { solved: res.solved, attempts: res.attempts, wins: res.wins, winStreak: res.winStreak } }))
         setProgressError(null)
       })
       .catch(err => setProgressError(`Couldn't save your progress — it wasn't recorded: ${err.message}`))

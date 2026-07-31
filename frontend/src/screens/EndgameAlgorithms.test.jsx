@@ -59,7 +59,7 @@ describe('EndgameAlgorithms', () => {
 
   it('records progress and shows the checkmate UI when the engine replies with checkmate', async () => {
     api.getEngineMove.mockResolvedValue({ status: 'checkmate', engineMove: null, fen: null })
-    api.updateEndgameProgress.mockResolvedValue({ solved: true, attempts: 1 })
+    api.updateEndgameProgress.mockResolvedValue({ solved: true, attempts: 1, wins: 1, winStreak: 1 })
 
     render(<EndgameAlgorithms />)
     await screen.findByText(/Two Bishops Checkmate/i)
@@ -68,7 +68,21 @@ describe('EndgameAlgorithms', () => {
 
     fireEvent.click(screen.getByText('Play move'))
 
-    await waitFor(() => expect(api.updateEndgameProgress).toHaveBeenCalledWith('bishop-1', true))
+    await waitFor(() => expect(api.updateEndgameProgress).toHaveBeenCalledWith('bishop-1', true, { trackStreak: true }))
     expect(await screen.findByText(/Checkmate!/)).toBeInTheDocument()
+  })
+
+  it('calls updateEndgameProgress with trackStreak true and solved false on a draw', async () => {
+    api.getEngineMove.mockResolvedValue({ status: 'draw', engineMove: null, fen: null })
+    api.updateEndgameProgress.mockResolvedValue({ solved: false, attempts: 2, wins: 1, winStreak: 0 })
+
+    render(<EndgameAlgorithms />)
+    await screen.findByText(/Two Bishops Checkmate/i)
+    fireEvent.click(screen.getByText(/Bishops beside the king/i))
+    await screen.findByText(/White to move/i)
+
+    fireEvent.click(screen.getByText('Play move'))
+
+    await waitFor(() => expect(api.updateEndgameProgress).toHaveBeenCalledWith('bishop-1', false, { trackStreak: true }))
   })
 })
