@@ -162,4 +162,9 @@ class EndgameProgress(Base):
     attempts  = Column(Integer, default=0)
     solved_at = Column(DateTime, nullable=True)
 
+    # Algorithms-drill-only stats (see routers/endgames.py's `track_streak` flag) —
+    # always 0 for tactics-Puzzle rows, since that screen never sets track_streak.
+    wins       = Column(Integer, default=0, nullable=False)
+    win_streak = Column(Integer, default=0, nullable=False)
+
     __table_args__ = (UniqueConstraint("user_id", "puzzle_id", name="uq_user_endgame"),)

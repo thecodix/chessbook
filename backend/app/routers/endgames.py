@@ -21,15 +21,21 @@ router = APIRouter()
 class ProgressOut(BaseModel):
     model_config = ConfigDict(from_attributes=True, alias_generator=to_camel, populate_by_name=True)
 
-    puzzle_id: str
-    solved:    bool
-    attempts:  int
+    puzzle_id:  str
+    solved:     bool
+    attempts:   int
+    wins:       int
+    win_streak: int
 
 
 class ProgressUpdate(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
-    solved: bool
+    solved:       bool
+    # True only for calls from the Algorithms drill (EndgameAlgorithms.jsx). Defaults
+    # to False so the Puzzles screen's existing calls — which never send this field —
+    # leave wins/win_streak untouched forever.
+    track_streak: bool = False
 
 
 # ── Routes ─────────────────────────────────────────────────────────────────────
@@ -55,13 +61,22 @@ def update_progress(
         .first()
     )
     if not row:
-        row = models.EndgameProgress(user_id=user.id, puzzle_id=puzzle_id, attempts=0, solved=False)
+        row = models.EndgameProgress(
+            user_id=user.id, puzzle_id=puzzle_id, attempts=0, solved=False, wins=0, win_streak=0,
+        )
         db.add(row)
 
     row.attempts += 1
     if body.solved and not row.solved:
         row.solved    = True
         row.solved_at = datetime.utcnow()
+
+    if body.track_streak:
+        if body.solved:
+            row.wins       += 1
+            row.win_streak += 1
+        else:
+            row.win_streak = 0
 
     db.commit()
     db.refresh(row)
