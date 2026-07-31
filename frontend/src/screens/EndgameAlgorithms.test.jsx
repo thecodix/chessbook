@@ -85,4 +85,43 @@ describe('EndgameAlgorithms', () => {
 
     await waitFor(() => expect(api.updateEndgameProgress).toHaveBeenCalledWith('bishop-1', false, { trackStreak: true }))
   })
+
+  it('shows the sidebar wins/streak summary once progress has loaded', async () => {
+    api.getEndgamesProgress.mockResolvedValue([
+      { puzzleId: 'bishop-1', solved: true, attempts: 5, wins: 3, winStreak: 2 },
+    ])
+
+    render(<EndgameAlgorithms />)
+
+    expect(await screen.findByText(/3 wins/)).toBeInTheDocument()
+    expect(screen.getByText(/streak 2/)).toBeInTheDocument()
+  })
+
+  it('shows win count and streak on the checkmate panel', async () => {
+    api.getEngineMove.mockResolvedValue({ status: 'checkmate', engineMove: null, fen: null })
+    api.updateEndgameProgress.mockResolvedValue({ solved: true, attempts: 3, wins: 3, winStreak: 2 })
+
+    render(<EndgameAlgorithms />)
+    await screen.findByText(/Two Bishops Checkmate/i)
+    fireEvent.click(screen.getByText(/Bishops beside the king/i))
+    await screen.findByText(/White to move/i)
+    fireEvent.click(screen.getByText('Play move'))
+
+    expect(await screen.findByText(/Win streak: 2/)).toBeInTheDocument()
+    expect(screen.getByText(/3 wins total/)).toBeInTheDocument()
+  })
+
+  it('shows a "Failed" heading when the drill ends in a draw', async () => {
+    api.getEngineMove.mockResolvedValue({ status: 'draw', engineMove: null, fen: null })
+    api.updateEndgameProgress.mockResolvedValue({ solved: false, attempts: 2, wins: 1, winStreak: 0 })
+
+    render(<EndgameAlgorithms />)
+    await screen.findByText(/Two Bishops Checkmate/i)
+    fireEvent.click(screen.getByText(/Bishops beside the king/i))
+    await screen.findByText(/White to move/i)
+    fireEvent.click(screen.getByText('Play move'))
+
+    expect(await screen.findByText('Failed')).toBeInTheDocument()
+    expect(screen.getByText(/Draw by the 75-move rule/)).toBeInTheDocument()
+  })
 })

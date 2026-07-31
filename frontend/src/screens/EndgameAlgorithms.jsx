@@ -100,6 +100,8 @@ export default function EndgameAlgorithms() {
                 <div className="oi-name">{pos.label}</div>
                 <div className="oi-meta">
                   <span>{progress[pos.id]?.solved ? '✓ solved' : ''}</span>
+                  <span>{progress[pos.id]?.wins ? ` · ${progress[pos.id].wins} win${progress[pos.id].wins === 1 ? '' : 's'}` : ''}</span>
+                  <span>{progress[pos.id]?.winStreak ? ` · streak ${progress[pos.id].winStreak}` : ''}</span>
                 </div>
               </div>
             ))}
@@ -151,12 +153,16 @@ export default function EndgameAlgorithms() {
         {state.status === 'checkmate' && (
           <div style={{ fontSize: 14, textAlign: 'center', color: 'var(--green)' }}>
             Checkmate! 🎉
+            <div style={{ fontSize: 12, color: 'var(--text4)', marginTop: 4 }}>
+              Win streak: {progress[state.positionId]?.winStreak ?? 0} · {progress[state.positionId]?.wins ?? 0} wins total
+            </div>
             <div><button className="btn-green" onClick={() => dispatch({ type: 'reset' })}>Back to positions</button></div>
           </div>
         )}
         {state.status === 'failed' && (
           <div style={{ fontSize: 14, textAlign: 'center', color: 'var(--red)' }}>
-            {FAIL_MESSAGE[state.failReason]}
+            <div style={{ fontWeight: 600 }}>Failed</div>
+            <div>{FAIL_MESSAGE[state.failReason]}</div>
             <div><button className="btn-green" onClick={() => selectPosition({ id: state.positionId, label: state.label, fen: data.categories.flatMap(c => c.positions).find(p => p.id === state.positionId)?.fen })}>Retry</button></div>
           </div>
         )}
