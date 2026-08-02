@@ -6,7 +6,7 @@
 // (once per 8-level act) keep the original full-checkmate flow as the
 // deliberate "epic" climax; cross-run meta-progression (runMeta.js) gates
 // newer content behind "reach level N once" unlocks.
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import PortalBoard from '../components/PortalBoard'
 import PortalMap from '../components/PortalMap'
 import { createEngine, other } from '../utils/portalChess/engine'
@@ -90,7 +90,10 @@ export default function PortalChessGM() {
   const tookDamageRef = useRef(false)
   const bossGimmickRef = useRef({})
 
-  const engine = tileMap ? createEngine({ N, world: tileMap, rules: { guardedKings: true, mods: true } }) : null
+  const engine = useMemo(
+    () => (tileMap ? createEngine({ N, world: tileMap, rules: { guardedKings: true, mods: true } }) : null),
+    [N, tileMap],
+  )
   const isSkirmish = !!currentNode && currentNode.type !== 'boss'
   const meta = runMeta.getMetaState()
   const synergies = activeSynergies(gms)
