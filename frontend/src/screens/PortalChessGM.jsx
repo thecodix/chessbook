@@ -114,6 +114,15 @@ export default function PortalChessGM() {
 
   // Safety net: if we resumed mid-match with it being the AI's turn (saved
   // right after the human moved but before the AI replied), let the AI move.
+  //
+  // IMPORTANT: `busy` must NOT be in this effect's dependency array. This
+  // effect sets `busy` via `setBusy(true)` in its own body — if `busy` were
+  // also a dependency, that state change would make the dependency array
+  // "change" on the very next render, causing React to run this effect's
+  // cleanup (`clearTimeout(t)`, cancelling the just-scheduled AI move)
+  // before the timer ever fires, and then the re-run's `!busy` guard would
+  // be false, so nothing gets rescheduled — the AI move is silently lost
+  // forever and the UI hangs on "The rival is thinking…" with no error.
   useEffect(() => {
     if (runPhase === 'match' && playMode === 'manual' && turn === 'b' && !busy && board && engine) {
       setBusy(true)
@@ -121,7 +130,7 @@ export default function PortalChessGM() {
       return () => clearTimeout(t)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [runPhase, playMode, turn, busy, board, engine])
+  }, [runPhase, playMode, turn, board, engine])
 
   function toast(msg) {
     setToastMsg(msg)
