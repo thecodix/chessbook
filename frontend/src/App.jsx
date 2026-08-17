@@ -96,6 +96,15 @@ export default function App() {
       .catch(() => setUser(null))
   }, [])
 
+  // Fire-and-forget: starts waking a sleeping Render free-tier instance as
+  // early as possible, before the user has picked a screen — by the time a
+  // real data request goes out the backend has had a head start. Result and
+  // errors are both irrelevant here; getMe()/screen data calls below go
+  // through utils/api.js's own retrying req() and handle failures there.
+  useEffect(() => {
+    fetch('/api/health').catch(() => {})
+  }, [])
+
   // Auto-start the guided tour for first-time users once logged in
   useEffect(() => {
     if (user && !localStorage.getItem(TOUR_DONE_KEY)) setTourStep(0)
