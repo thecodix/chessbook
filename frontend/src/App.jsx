@@ -5,9 +5,6 @@ import Problems   from './screens/Problems'
 import Endgames   from './screens/Endgames'
 import Import     from './screens/Import'
 import SparringMode from './screens/SparringMode'
-import PortalChess   from './screens/PortalChess'
-import PortalChessGM from './screens/PortalChessGM'
-import Compendium    from './screens/Compendium'
 import Login      from './screens/Login'
 import Tour       from './components/Tour'
 import PieceStylePicker from './components/PieceStylePicker'
@@ -24,9 +21,6 @@ const SCREENS = [
   { id: 'problems',   label: 'Problems' },
   { id: 'endgames',   label: 'Endgames' },
   { id: 'import',     label: 'Import games' },
-  { id: 'portalchess',   label: 'Portal Chess' },
-  { id: 'portalchess-gm', label: 'Grandes Maestros' },
-  { id: 'compendium', label: 'Compendio' },
 ]
 
 function RatingEditor({ user, onUpdated }) {
@@ -235,9 +229,6 @@ export default function App() {
         {screen === 'problems'   && <Problems />}
         {screen === 'endgames'   && <Endgames />}
         {screen === 'import'     && <Import />}
-        {screen === 'portalchess'    && <PortalChess />}
-        {screen === 'portalchess-gm' && <PortalChessGM />}
-        {screen === 'compendium'     && <Compendium />}
       </main>
 
       {tourStep != null && (
