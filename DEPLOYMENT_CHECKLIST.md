@@ -16,13 +16,11 @@ Leyenda: ✅ Hecho · ⚠️ Parcial / a confirmar · ❌ Falta
       todavía (ver sección 4).
 - [x] **CORS configurado** ✅ — `main.py` lee `CORS_ORIGINS` de env var (no `*`), con default a
       `localhost` en dev y al dominio real de Render en producción. Ya está bien hecho.
-- [ ] **Migraciones** ❌ — **gap real, no solo pendiente de ejecutar.** `alembic` está como
-      dependencia y hay una tarea `poe migrate` (`alembic upgrade head`), pero no existe carpeta
-      `alembic/` ni ninguna revisión inicial en el repo. Hoy el esquema se crea en producción con
-      `Base.metadata.create_all(bind=engine)` en el `startup` de `main.py` — esto crea tablas que
-      no existen pero **no migra cambios de esquema futuros** (columnas nuevas, renombres, etc.)
-      sin perder o corromper datos. Hay que inicializar Alembic de verdad antes del primer deploy
-      con usuarios reales.
+- [x] **Migraciones** ✅ — Alembic inicializado de verdad: `backend/alembic/` con la revisión
+      inicial generada y verificada contra `models.py` (commits `65d1f2a`, `10efdae`, `5fbb47a`).
+      `alembic upgrade head` corre automáticamente al arrancar el contenedor (`backend/Dockerfile`,
+      antes de `uvicorn`), tanto en `docker compose` como en Render — ya no depende de acordarse de
+      ejecutarlo a mano. `Base.metadata.create_all(bind=engine)` se ha retirado de `main.py`.
 - [x] **HTTPS** ✅ — automático en Render, nada que configurar. Se confirma solo al desplegar.
 
 ## 2. Frontend (React)
@@ -104,10 +102,7 @@ El backend/frontend en sí ya están más cerca de "listos para desplegar" de lo
 genérica sugiere — `render.yaml`, CORS y el proxy de API ya están bien resueltos. Los huecos
 reales están en otro sitio:
 
-1. **Alembic real** (antes de tener usuarios/datos reales) — inicializar `alembic/`, generar la
-   revisión inicial contra el modelo actual, y sustituir `create_all()` por `alembic upgrade head`
-   en el arranque/deploy. Bloqueante: sin esto, el primer cambio de esquema en producción es
-   arriesgado.
+1. ~~**Alembic real**~~ ✅ hecho — ver §1 "Migraciones". El siguiente bloqueante real es el punto 2.
 2. **Confirmar la instancia de Neon** y hacer el primer deploy real de backend+frontend en Render
    para verificar que arranca en remoto con la BD gestionada de verdad.
 3. **Mitigar los fallos de conexión en producción** (sección 9) — código rápido (warm-up ping +
