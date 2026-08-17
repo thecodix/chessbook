@@ -1,0 +1,129 @@
+# Chessbook — Checklist para ponerlo en remoto (producción)
+
+Estado analizado contra el código real del repo el 2026-08-17.
+Leyenda: ✅ Hecho · ⚠️ Parcial / a confirmar · ❌ Falta
+
+## 1. Backend (FastAPI)
+
+- [x] **Hosting** ✅ — `render.yaml` ya define `chessbook-api` como servicio Docker en Render
+      (`backend/Dockerfile`), tal como sugiere la checklist. No hace falta elegir, ya está decidido.
+- [ ] **Base de datos gestionada** ⚠️ — `render.yaml` espera un `DATABASE_URL` de Neon Postgres
+      puesto a mano en el dashboard (`sync: false`). No es verificable desde el código si la
+      instancia de Neon ya existe o sigue siendo un plan. **Confirmar/crear la instancia real.**
+- [x] **Variables de entorno** ✅ (para lo que ya existe) — `JWT_SECRET`, `DATABASE_URL`,
+      `CORS_ORIGINS` ya están fuera del código (`render.yaml` + `.env.example`).
+      ❌ `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` no existen porque Stripe no está integrado
+      todavía (ver sección 4).
+- [x] **CORS configurado** ✅ — `main.py` lee `CORS_ORIGINS` de env var (no `*`), con default a
+      `localhost` en dev y al dominio real de Render en producción. Ya está bien hecho.
+- [ ] **Migraciones** ❌ — **gap real, no solo pendiente de ejecutar.** `alembic` está como
+      dependencia y hay una tarea `poe migrate` (`alembic upgrade head`), pero no existe carpeta
+      `alembic/` ni ninguna revisión inicial en el repo. Hoy el esquema se crea en producción con
+      `Base.metadata.create_all(bind=engine)` en el `startup` de `main.py` — esto crea tablas que
+      no existen pero **no migra cambios de esquema futuros** (columnas nuevas, renombres, etc.)
+      sin perder o corromper datos. Hay que inicializar Alembic de verdad antes del primer deploy
+      con usuarios reales.
+- [x] **HTTPS** ✅ — automático en Render, nada que configurar. Se confirma solo al desplegar.
+
+## 2. Frontend (React)
+
+- [x] **Build de producción** ✅ — `npm run build` (Vite) ya existe y hay un `frontend/dist/`
+      generado en el repo, así que ya se ha probado localmente.
+- [x] **Hosting** ✅ — ya decidido: Render static site (`chessbook-frontend` en `render.yaml`),
+      alternativa válida a Cloudflare Pages/Vercel que ya listaba la checklist original.
+- [x] **Variable de entorno con URL del backend** ✅ (mejor de lo pedido) — no hace falta ninguna,
+      el frontend llama a rutas relativas `/api/...` (`frontend/src/utils/api.js`) y Render hace
+      rewrite proxy de `/api/*` al backend. Evita el problema de "olvidarse de cambiar `localhost`".
+- [ ] **Dominio propio o subdominio** ❌ — de momento usa los `*.onrender.com` por defecto.
+
+## 3. Autenticación
+
+- [ ] Cookies `Secure`/`SameSite` — **N/A tal cual está planteado**: no usan cookies, usan JWT vía
+      header `Authorization: Bearer`, con el token guardado en `localStorage`
+      (`chessbook_token`). Nota aparte (no pedida en la checklist): `localStorage` es más expuesto
+      a XSS que una cookie `httpOnly`; no es bloqueante para lanzar pero merece revisión futura.
+- [x] JWT expiración razonable ✅ — 30 días fijos en `auth.py`. ❌ sin refresh token, pero es
+      aceptable tal como dice la checklist ("si aplica").
+- [ ] **Recuperación de contraseña** ❌ — no hay endpoint ni pantalla; no se encontró ningún
+      rastro de "reset password" / "forgot" en backend ni frontend.
+
+## 4. Pagos (Stripe)
+
+- [ ] Todo ❌ — no hay ninguna integración de Stripe en el repo, ni backend ni frontend
+      (cuenta live, producto/price, Checkout, webhook, páginas de éxito/cancelación: nada existe
+      todavía).
+
+## 5. Email transaccional
+
+- [ ] Todo ❌ — no hay ningún servicio de email integrado (sin Resend/Postmark/SendGrid/SMTP en
+      las dependencias ni en el código).
+
+## 6. Monitorización mínima
+
+- [x] Logs ✅ — vienen gratis por defecto en el panel de Render, nada que configurar.
+- [ ] Sentry ❌ — no integrado. Opcional según la checklist, pero recomendable antes de cobrar.
+
+## 7. Legal/confianza mínima
+
+- [ ] Términos de Servicio ❌ — no existe la página en el frontend.
+- [ ] Política de Privacidad ❌ — no existe la página en el frontend.
+- [ ] Aviso de cobro/cancelación ❌ — depende de que exista Stripe primero.
+
+## 8. Backups
+
+- [ ] ⚠️ Depende del proveedor real de la BD (Neon, mencionado en `render.yaml`). No es
+      verificable desde el código — **confirmar manualmente en el dashboard de Neon** si el plan
+      elegido incluye backups/point-in-time recovery, no asumirlo.
+
+## 9. Fiabilidad en producción
+
+- [ ] ⚠️ **Mitigación de código hecha; causa raíz sigue pendiente** — "Problems" (y cualquier
+      pantalla que llame al backend nada más cargar) podía fallar por conexión en producción:
+      causa confirmada en `frontend/src/utils/api.js`, el backend corre en el plan **free** de
+      Render, que se duerme tras ~15 min de inactividad y tarda hasta ~1 minuto en despertar.
+      Ya implementado (commits `b2b8e3d` y `5c36961`): un ping de calentamiento a `/api/health`
+      nada más cargar la app, y el presupuesto de reintentos de `req()` ampliado para cubrir un
+      arranque en frío completo. Esto es mitigación de código, no la solución de fondo — la causa
+      raíz real (plan free de Render) sigue sin resolverse; ver "Orden de prioridad" más abajo,
+      que ya lo enmarca así.
+
+## 10. Alcance del producto — retirar minijuegos
+
+- [x] **Quitar "Portal Chess", "Grandes Maestros" y "Compendio"** ✅ — eliminado en la limpieza de
+      producción (commit `a03e788`, "Remove Portal Chess, Grandes Maestros, and Compendio
+      minigames"). Era un roguelike de ajedrez construido sobre
+      `PortalChess.jsx`/`PortalChessGM.jsx` (más `Compendium.jsx`, que era solo la pantalla de
+      referencia de ese roguelike, no del repertorio de aperturas), sin ninguna dependencia del
+      backend ni de la BD.
+
+---
+
+## Orden de prioridad real (ajustado al estado encontrado)
+
+El backend/frontend en sí ya están más cerca de "listos para desplegar" de lo que la checklist
+genérica sugiere — `render.yaml`, CORS y el proxy de API ya están bien resueltos. Los huecos
+reales están en otro sitio:
+
+1. **Alembic real** (antes de tener usuarios/datos reales) — inicializar `alembic/`, generar la
+   revisión inicial contra el modelo actual, y sustituir `create_all()` por `alembic upgrade head`
+   en el arranque/deploy. Bloqueante: sin esto, el primer cambio de esquema en producción es
+   arriesgado.
+2. **Confirmar la instancia de Neon** y hacer el primer deploy real de backend+frontend en Render
+   para verificar que arranca en remoto con la BD gestionada de verdad.
+3. **Mitigar los fallos de conexión en producción** (sección 9) — código rápido (warm-up ping +
+   ampliar la ventana de reintentos) que se puede hacer ya; ver plan de ejecución. La solución de
+   fondo (salir del plan free de Render) depende del punto 2 y de tener ya ingresos.
+4. **Retirar los minijuegos** (sección 10) — reduce superficie a probar/mantener antes de cobrar;
+   no bloquea nada de lo demás, se puede hacer en paralelo.
+5. **Recuperación de contraseña** — hueco de autenticación real, no solo cosmético.
+6. **Stripe** completo (cuenta live, producto, Checkout, webhook, páginas éxito/cancelación).
+7. **Email transaccional** (registro, recibo, reset de contraseña — este último depende del punto 5).
+8. **Legal mínimo** (Términos + Privacidad + aviso de cobro).
+9. **Backups** — confirmar en el dashboard de Neon, no asumir.
+10. **Sentry** — opcional, después de lo anterior.
+
+Dominio propio (sección 2) es cosmético y puede ir en paralelo o después del primer deploy
+funcional; no bloquea nada del resto.
+
+**Plan de ejecución detallado** (puntos 3 y 4, ya totalmente especificados y listos para
+implementar): `docs/superpowers/plans/2026-08-17-production-cleanup.md`.
