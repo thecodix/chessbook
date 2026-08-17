@@ -40,7 +40,7 @@
 
 Confirmed during investigation (2026-08-17): `grep -rlE "PortalChess|PortalBoard|PortalMap|Compendium|portalChess" frontend/src` returns only files inside this task's own delete list plus `App.jsx`. No backend router, no `public/` asset, and no `tourSteps.js` step references any of `portalchess`, `portalchess-gm`, or `compendium` — the guided tour never routes through these screens, so no tour edit is needed.
 
-- [ ] **Step 1: Remove the three imports from `App.jsx`**
+- [x] **Step 1: Remove the three imports from `App.jsx`**
 
 In `frontend/src/App.jsx`, delete these lines:
 
@@ -50,7 +50,7 @@ import PortalChessGM from './screens/PortalChessGM'
 import Compendium    from './screens/Compendium'
 ```
 
-- [ ] **Step 2: Remove the three entries from the `SCREENS` array**
+- [x] **Step 2: Remove the three entries from the `SCREENS` array**
 
 Change:
 
@@ -81,7 +81,7 @@ const SCREENS = [
 ]
 ```
 
-- [ ] **Step 3: Remove the three render branches**
+- [x] **Step 3: Remove the three render branches**
 
 In the `<main className="main">` block, delete:
 
@@ -91,12 +91,12 @@ In the `<main className="main">` block, delete:
 {screen === 'compendium'     && <Compendium />}
 ```
 
-- [ ] **Step 4: Run the full test suite to confirm nothing outside the doomed files depended on them**
+- [x] **Step 4: Run the full test suite to confirm nothing outside the doomed files depended on them**
 
 Run: `cd frontend && npm test`
 Expected: PASS, same test count minus the Portal Chess/Compendium test files (which still exist on disk until Step 5, so at this point they still run and pass — the app just no longer routes to the screens).
 
-- [ ] **Step 5: Delete the screens, components, and the whole `utils/portalChess/` directory**
+- [x] **Step 5: Delete the screens, components, and the whole `utils/portalChess/` directory**
 
 ```bash
 git rm frontend/src/screens/PortalChess.jsx frontend/src/screens/PortalChessGM.jsx frontend/src/screens/Compendium.jsx
@@ -104,17 +104,17 @@ git rm frontend/src/components/PortalBoard.jsx frontend/src/components/PortalMap
 git rm -r frontend/src/utils/portalChess/
 ```
 
-- [ ] **Step 6: Run the full test suite again to confirm it's still green with the files gone**
+- [x] **Step 6: Run the full test suite again to confirm it's still green with the files gone**
 
 Run: `cd frontend && npm test`
 Expected: PASS, with the Portal Chess/Compendium `*.test.js` files no longer present in the run output at all (they were deleted in Step 5, not just skipped).
 
-- [ ] **Step 7: Build to confirm no dangling import slipped through**
+- [x] **Step 7: Build to confirm no dangling import slipped through**
 
 Run: `cd frontend && npm run build`
 Expected: build succeeds — a leftover import of a deleted file would fail the build even if Vitest didn't catch it (e.g. a stray reference in a file neither grep pass caught).
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add frontend/src/App.jsx
@@ -135,7 +135,7 @@ git commit -m "Remove Portal Chess, Grandes Maestros, and Compendio minigames"
 
 Root cause this mitigates: the Render free-tier backend spins down after ~15 min idle and can take up to ~1 minute to respond to the *first* request after waking. Today that first request is whatever API call the user's current screen happens to make (e.g. `getMe()` on load, or `getProblemsProgress()` on the Problems screen) — pinging `/api/health` unconditionally on `App` mount starts that wake-up as early as possible, before the user has picked a screen, so by the time a real data request goes out the backend has a head start.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `frontend/src/App.test.jsx`:
 
@@ -161,12 +161,12 @@ describe('App', () => {
 })
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `cd frontend && npx vitest run src/App.test.jsx`
 Expected: FAIL — `global.fetch` is never called with `/api/health'` because `App.jsx` doesn't ping it yet.
 
-- [ ] **Step 3: Add the warm-up ping to `App.jsx`**
+- [x] **Step 3: Add the warm-up ping to `App.jsx`**
 
 In `frontend/src/App.jsx`, add this effect next to the existing "Restore session on mount" effect (inside the `App` component, near the top of the function body):
 
@@ -181,17 +181,17 @@ In `frontend/src/App.jsx`, add this effect next to the existing "Restore session
   }, [])
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `cd frontend && npx vitest run src/App.test.jsx`
 Expected: PASS
 
-- [ ] **Step 5: Run the full test suite**
+- [x] **Step 5: Run the full test suite**
 
 Run: `cd frontend && npm test`
 Expected: PASS, no regressions in other screens.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add frontend/src/App.jsx frontend/src/App.test.jsx
@@ -212,7 +212,7 @@ git commit -m "Ping /api/health on app load to start waking a sleeping Render ba
 
 Root cause: `req()`'s retry loop (`frontend/src/utils/api.js:20-64`) already retries on network failure and on 502/503/504, which is the right mechanism — it just gives up too soon. Today: `MAX_RETRIES = 8`, `RETRY_DELAY_MS = 5000` → 8 retries × 5s = 40s of retrying (9 total attempts) before throwing `'Could not reach the server. Please check your connection and try again.'`. The code's own comment on `RETRYABLE_STATUSES` already documents the Render free tier taking "up to ~a minute" to wake — 40s is short of that worst case, so a request made right as the instance is asleep can still exhaust its retries and surface an error to the user seconds before the backend would have answered.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `frontend/src/utils/api.retry.test.js`:
 
@@ -243,12 +243,12 @@ describe('req retry window', () => {
 })
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `cd frontend && npx vitest run src/utils/api.retry.test.js`
 Expected: FAIL — with `MAX_RETRIES = 8`, `fetch` is called 9 times (not ≥15) and the promise has already rejected well before the 70s of advanced fake time elapses.
 
-- [ ] **Step 3: Bump `MAX_RETRIES`**
+- [x] **Step 3: Bump `MAX_RETRIES`**
 
 In `frontend/src/utils/api.js`, change:
 
@@ -264,17 +264,17 @@ const MAX_RETRIES        = 14
 
 (14 retries × 5s `RETRY_DELAY_MS` = 70s of retrying — comfortably past Render's documented ~60s worst-case cold start, still short enough that a genuinely offline user isn't stuck waiting more than a bit over a minute for the final error.)
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `cd frontend && npx vitest run src/utils/api.retry.test.js`
 Expected: PASS
 
-- [ ] **Step 5: Run the full test suite**
+- [x] **Step 5: Run the full test suite**
 
 Run: `cd frontend && npm test`
 Expected: PASS — no other test asserts on the old retry count/timing (confirmed: `api.sparring.test.js` and `api.engineMove.test.js` mock single-shot successful responses, they don't exercise the retry loop).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add frontend/src/utils/api.js frontend/src/utils/api.retry.test.js
