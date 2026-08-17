@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.routers import repertoire, games, users, analysis, problems, endgames, sparring
-from app.database import Base, engine, SessionLocal
+from app.database import SessionLocal
 from app import models  # noqa: F401 — registers models with metadata
 
 app = FastAPI(title="Chessbook API", version="0.1.0")
@@ -198,7 +198,6 @@ _SEED = [
 
 @app.on_event("startup")
 def startup():
-    Base.metadata.create_all(bind=engine)
     _seed()
 
 

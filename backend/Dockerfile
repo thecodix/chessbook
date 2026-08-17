@@ -6,8 +6,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends stockfish \
     && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml .
+COPY alembic.ini .
+COPY alembic/ ./alembic/
 COPY app/ ./app/
 
 RUN pip install --no-cache-dir -e ".[dev]"
 
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --reload"]
+CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --reload"]
