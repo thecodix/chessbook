@@ -12,7 +12,7 @@ export const clearToken = ()  => localStorage.removeItem(TOKEN_KEY)
 // transient failures with backoff instead of treating them as permanent
 // (and instead of throwing an opaque JSON-parse error on the HTML body).
 const RETRYABLE_STATUSES = new Set([502, 503, 504])
-const MAX_RETRIES        = 8
+const MAX_RETRIES        = 14
 const RETRY_DELAY_MS     = 5000
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms))
