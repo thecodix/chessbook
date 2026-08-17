@@ -1,13 +1,15 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { getMe, setToken } from './api'
+import { getMe, setToken, clearToken } from './api'
 
 beforeEach(() => {
   setToken('test-token')
-  global.fetch = vi.fn(() => Promise.reject(new Error('network down')))
+  vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new Error('network down'))))
 })
 
 afterEach(() => {
   vi.useRealTimers()
+  vi.unstubAllGlobals()
+  clearToken()
 })
 
 describe('req retry window', () => {

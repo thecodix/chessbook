@@ -89,20 +89,19 @@ export default function App() {
   const [tourStep, setTourStep] = useState(null) // null = tour inactive, else index into TOUR_STEPS
   const [showPieceStyles, setShowPieceStyles] = useState(false)
 
+  // Fire-and-forget warm-up ping, declared first so it fires before getMe()
+  // below: unauthenticated and retry-free, it can't trigger a 401/logout or
+  // burn retry budget — it just nudges a sleeping Render instance a beat
+  // earlier. Result and errors are both irrelevant here.
+  useEffect(() => {
+    fetch('/api/health').catch(() => {})
+  }, [])
+
   // Restore session on mount
   useEffect(() => {
     getMe()
       .then(u => setUser(u))
       .catch(() => setUser(null))
-  }, [])
-
-  // Fire-and-forget: starts waking a sleeping Render free-tier instance as
-  // early as possible, before the user has picked a screen — by the time a
-  // real data request goes out the backend has had a head start. Result and
-  // errors are both irrelevant here; getMe()/screen data calls below go
-  // through utils/api.js's own retrying req() and handle failures there.
-  useEffect(() => {
-    fetch('/api/health').catch(() => {})
   }, [])
 
   // Auto-start the guided tour for first-time users once logged in
