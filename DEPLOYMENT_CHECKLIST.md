@@ -21,6 +21,12 @@ Leyenda: ✅ Hecho · ⚠️ Parcial / a confirmar · ❌ Falta
       `alembic upgrade head` corre automáticamente al arrancar el contenedor (`backend/Dockerfile`,
       antes de `uvicorn`), tanto en `docker compose` como en Render — ya no depende de acordarse de
       ejecutarlo a mano. `Base.metadata.create_all(bind=engine)` se ha retirado de `main.py`.
+      **Importante para adoptar Alembic en una BD ya existente** (creada por el antiguo `create_all()`,
+      sin tabla `alembic_version`): `alembic upgrade head` fallará con `DuplicateTable` porque intentará
+      recrear tablas que ya existen. En ese caso hay que ejecutar una sola vez
+      `alembic stamp f68b422faa99` contra esa BD (marca la revisión inicial como ya aplicada, sin volver
+      a correr los `create_table`). En local, la alternativa más simple es borrar el volumen
+      (`docker compose down -v`, ver más abajo); esto no aplica a una instancia Neon real con datos.
 - [x] **HTTPS** ✅ — automático en Render, nada que configurar. Se confirma solo al desplegar.
 
 ## 2. Frontend (React)
