@@ -9,7 +9,8 @@ COPY pyproject.toml .
 COPY alembic.ini .
 COPY alembic/ ./alembic/
 COPY app/ ./app/
+COPY docker-entrypoint.sh .
 
-RUN pip install --no-cache-dir -e ".[dev]"
+RUN pip install --no-cache-dir -e ".[dev]" && chmod +x docker-entrypoint.sh
 
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --reload"]
+CMD ["./docker-entrypoint.sh"]
