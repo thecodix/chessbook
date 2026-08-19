@@ -12,6 +12,10 @@ services:
         generateValue: true  # Render generates a random secret
       - key: CORS_ORIGINS
         value: "https://chessbook-frontend.onrender.com"
+      - key: FRONTEND_URL
+        value: "https://chessbook-frontend.onrender.com"
+      - key: RESEND_API_KEY
+        sync: false          # set manually in Render dashboard — see .env.example
 
   - type: web
     name: chessbook-frontend

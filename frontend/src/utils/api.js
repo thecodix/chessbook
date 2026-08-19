@@ -73,6 +73,12 @@ export const login = (username, password) =>
 
 export const getMe = () => req('/users/me')
 
+export const forgotPassword = (email) =>
+  req('/users/forgot-password', { method: 'POST', body: JSON.stringify({ email }) })
+
+export const resetPassword = (token, newPassword) =>
+  req('/users/reset-password', { method: 'POST', body: JSON.stringify({ token, newPassword }) })
+
 export const updateRating = (rating) =>
   req(`/users/me/rating?rating=${rating}`, { method: 'PATCH' })
 

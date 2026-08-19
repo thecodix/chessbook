@@ -1,4 +1,6 @@
+import hashlib
 import os
+import secrets
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -14,6 +16,17 @@ from app import models
 _SECRET  = os.getenv("JWT_SECRET", "dev-secret-change-in-production")
 _ALGO    = "HS256"
 _EXPIRES = 30  # days
+
+RESET_TOKEN_EXPIRES_MINUTES = 60
+
+
+def hash_reset_token(raw: str) -> str:
+    return hashlib.sha256(raw.encode()).hexdigest()
+
+
+def make_reset_token() -> tuple[str, str]:
+    raw = secrets.token_urlsafe(32)
+    return raw, hash_reset_token(raw)
 
 oauth2 = OAuth2PasswordBearer(tokenUrl="/api/users/login", auto_error=False)
 

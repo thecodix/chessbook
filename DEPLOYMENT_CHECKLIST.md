@@ -48,8 +48,21 @@ Leyenda: ✅ Hecho · ⚠️ Parcial / a confirmar · ❌ Falta
       a XSS que una cookie `httpOnly`; no es bloqueante para lanzar pero merece revisión futura.
 - [x] JWT expiración razonable ✅ — 30 días fijos en `auth.py`. ❌ sin refresh token, pero es
       aceptable tal como dice la checklist ("si aplica").
-- [ ] **Recuperación de contraseña** ❌ — no hay endpoint ni pantalla; no se encontró ningún
-      rastro de "reset password" / "forgot" en backend ni frontend.
+- [x] **Recuperación de contraseña** ✅ — `POST /api/users/forgot-password` genera un token de un
+      solo uso (hash SHA-256 almacenado, 60 min de validez) y lo envía por email vía Resend
+      (`app/email.py`); `POST /api/users/reset-password` lo valida y actualiza la contraseña.
+      Pantallas nuevas en `Login.jsx` ("Forgot password?") y `ResetPassword.jsx`. Limitado a
+      5 peticiones/hora por IP (`app/rate_limit.py`) para evitar spam del endpoint.
+      **Importante**: sin dominio propio verificado en Resend, el remitente gratuito
+      `onboarding@resend.dev` solo puede entregar a la cuenta Resend del propio desarrollador,
+      no a usuarios reales — el flujo funciona end-to-end pero solo entregará emails de verdad
+      una vez se compre y verifique un dominio (ver sección 2, "Dominio propio"). Sin
+      `RESEND_API_KEY` configurada (dev local), el link se escribe al log del backend en vez de
+      enviarse por email.
+      **Nota**: los usuarios que ya existían antes de este cambio recibieron un email placeholder
+      no entregable (`userN-xxxx@chessbook.invalid`, migración `83fbf6fded67`) — no hay pantalla
+      para que editen su email todavía, así que no podrán usar la recuperación de contraseña hasta
+      que se añada esa opción en una tarea futura.
 
 ## 4. Pagos (Stripe)
 
@@ -59,8 +72,11 @@ Leyenda: ✅ Hecho · ⚠️ Parcial / a confirmar · ❌ Falta
 
 ## 5. Email transaccional
 
-- [ ] Todo ❌ — no hay ningún servicio de email integrado (sin Resend/Postmark/SendGrid/SMTP en
-      las dependencias ni en el código).
+- [ ] ⚠️ **Parcial** — Resend ya está integrado (`app/email.py`, dependencia `resend` en
+      `pyproject.toml`), pero de momento solo se usa para el reset de contraseña (§3). ❌ Sin
+      email de bienvenida al registrarse, sin recibo (depende de Stripe, §4). El mismo bloqueo de
+      dominio propio que afecta a la recuperación de contraseña aplica aquí: sin dominio verificado
+      en Resend, no se puede enviar a usuarios reales.
 
 ## 6. Monitorización mínima
 
@@ -116,9 +132,11 @@ reales están en otro sitio:
    fondo (salir del plan free de Render) depende del punto 2 y de tener ya ingresos.
 4. **Retirar los minijuegos** (sección 10) — reduce superficie a probar/mantener antes de cobrar;
    no bloquea nada de lo demás, se puede hacer en paralelo.
-5. **Recuperación de contraseña** — hueco de autenticación real, no solo cosmético.
+5. ~~**Recuperación de contraseña**~~ ✅ hecho — ver §3. Entrega real de emails a usuarios sigue
+   bloqueada por el dominio propio (§2), igual que el resto de este punto 7.
 6. **Stripe** completo (cuenta live, producto, Checkout, webhook, páginas éxito/cancelación).
-7. **Email transaccional** (registro, recibo, reset de contraseña — este último depende del punto 5).
+7. **Email transaccional** — Resend ya integrado (§5), falta el email de bienvenida y el recibo
+   (depende del punto 6).
 8. **Legal mínimo** (Términos + Privacidad + aviso de cobro).
 9. **Backups** — confirmar en el dashboard de Neon, no asumir.
 10. **Sentry** — opcional, después de lo anterior.

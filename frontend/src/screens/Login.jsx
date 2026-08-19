@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { login as apiLogin, register as apiRegister, setToken } from '../utils/api'
+import { login as apiLogin, register as apiRegister, forgotPassword as apiForgotPassword, setToken } from '../utils/api'
 
 const RATING_LABELS = [
   [800,  'Beginner'],
@@ -18,16 +18,36 @@ function ratingHint(r) {
 }
 
 export default function Login({ onSuccess }) {
-  const [mode,    setMode]    = useState('login')
+  const [mode,    setMode]    = useState('login')   // 'login' | 'register' | 'forgot'
   const [username, setUsername] = useState('')
+  const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
   const [chesscom, setChesscom] = useState('')
   const [rating,   setRating]   = useState(1500)
   const [error,    setError]    = useState(null)
+  const [notice,   setNotice]   = useState(null)
   const [busy,     setBusy]     = useState(false)
 
+  function switchMode(m) {
+    setMode(m); setError(null); setNotice(null)
+  }
+
   async function handleSubmit() {
-    if (!username.trim() || !password) return
+    if (mode === 'forgot') {
+      if (!email.trim()) return
+      setBusy(true); setError(null); setNotice(null)
+      try {
+        const data = await apiForgotPassword(email.trim())
+        setNotice(data.message)
+      } catch (e) {
+        setError(e.message)
+      } finally {
+        setBusy(false)
+      }
+      return
+    }
+
+    if (!username.trim() || !password || (mode === 'register' && !email.trim())) return
     setBusy(true); setError(null)
     try {
       let data
@@ -36,6 +56,7 @@ export default function Login({ onSuccess }) {
       } else {
         data = await apiRegister({
           username:          username.trim(),
+          email:             email.trim(),
           password,
           chesscomUsername:  chesscom.trim() || null,
           platformRating:    rating,
@@ -67,35 +88,65 @@ export default function Login({ onSuccess }) {
         </div>
 
         {/* Mode tabs */}
-        <div style={{
-          display: 'flex', gap: 3, background: 'var(--bg3)',
-          borderRadius: 8, padding: 3,
-        }}>
-          {[['login', 'Sign in'], ['register', 'Create account']].map(([m, label]) => (
-            <button
-              key={m} onClick={() => { setMode(m); setError(null) }}
-              style={{
-                flex: 1, padding: '6px 0', borderRadius: 6, border: 'none',
-                fontSize: 13, fontFamily: 'inherit', cursor: 'pointer',
-                background: mode === m ? 'var(--bg2)' : 'transparent',
-                color:      mode === m ? 'var(--text0)' : 'var(--text4)',
-                transition: 'background .15s',
-              }}
-            >{label}</button>
-          ))}
-        </div>
+        {mode !== 'forgot' && (
+          <div style={{
+            display: 'flex', gap: 3, background: 'var(--bg3)',
+            borderRadius: 8, padding: 3,
+          }}>
+            {[['login', 'Sign in'], ['register', 'Create account']].map(([m, label]) => (
+              <button
+                key={m} onClick={() => switchMode(m)}
+                style={{
+                  flex: 1, padding: '6px 0', borderRadius: 6, border: 'none',
+                  fontSize: 13, fontFamily: 'inherit', cursor: 'pointer',
+                  background: mode === m ? 'var(--bg2)' : 'transparent',
+                  color:      mode === m ? 'var(--text0)' : 'var(--text4)',
+                  transition: 'background .15s',
+                }}
+              >{label}</button>
+            ))}
+          </div>
+        )}
+
+        {mode === 'forgot' && (
+          <div style={{ fontSize: 12, color: 'var(--text4)', textAlign: 'center' }}>
+            Enter your email and we'll send you a reset link.
+          </div>
+        )}
 
         {/* Fields */}
-        <input
-          type="text" placeholder="Username" autoFocus
-          value={username} onChange={e => setUsername(e.target.value)} onKeyDown={onKey}
-          style={{ width: '100%' }}
-        />
-        <input
-          type="password" placeholder="Password"
-          value={password} onChange={e => setPassword(e.target.value)} onKeyDown={onKey}
-          style={{ width: '100%' }}
-        />
+        {mode !== 'forgot' && (
+          <input
+            type="text" placeholder="Username" autoFocus
+            value={username} onChange={e => setUsername(e.target.value)} onKeyDown={onKey}
+            style={{ width: '100%' }}
+          />
+        )}
+
+        {(mode === 'register' || mode === 'forgot') && (
+          <input
+            type="email" placeholder="Email" autoFocus={mode === 'forgot'}
+            value={email} onChange={e => setEmail(e.target.value)} onKeyDown={onKey}
+            style={{ width: '100%' }}
+          />
+        )}
+
+        {mode !== 'forgot' && (
+          <input
+            type="password" placeholder="Password"
+            value={password} onChange={e => setPassword(e.target.value)} onKeyDown={onKey}
+            style={{ width: '100%' }}
+          />
+        )}
+
+        {mode === 'login' && (
+          <div
+            onClick={() => switchMode('forgot')}
+            style={{ fontSize: 12, color: 'var(--text4)', textAlign: 'right', cursor: 'pointer', marginTop: -8 }}
+          >
+            Forgot password?
+          </div>
+        )}
 
         {mode === 'register' && (
           <>
@@ -138,14 +189,40 @@ export default function Login({ onSuccess }) {
           </div>
         )}
 
-        <button
-          className="btn-green"
-          onClick={handleSubmit}
-          disabled={busy || !username.trim() || !password}
-          style={{ marginTop: 4 }}
-        >
-          {busy ? '…' : mode === 'login' ? 'Sign in' : 'Create account'}
-        </button>
+        {notice && (
+          <div style={{ fontSize: 12, color: 'var(--green)', textAlign: 'center', lineHeight: 1.4 }}>
+            {notice}
+          </div>
+        )}
+
+        {mode === 'forgot' ? (
+          <button
+            className="btn-green"
+            onClick={handleSubmit}
+            disabled={busy || !email.trim()}
+            style={{ marginTop: 4 }}
+          >
+            {busy ? '…' : 'Send reset link'}
+          </button>
+        ) : (
+          <button
+            className="btn-green"
+            onClick={handleSubmit}
+            disabled={busy || !username.trim() || !password || (mode === 'register' && !email.trim())}
+            style={{ marginTop: 4 }}
+          >
+            {busy ? '…' : mode === 'login' ? 'Sign in' : 'Create account'}
+          </button>
+        )}
+
+        {mode === 'forgot' && (
+          <div
+            onClick={() => switchMode('login')}
+            style={{ fontSize: 12, color: 'var(--text4)', textAlign: 'center', cursor: 'pointer' }}
+          >
+            Back to sign in
+          </div>
+        )}
       </div>
     </div>
   )

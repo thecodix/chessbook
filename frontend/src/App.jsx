@@ -6,6 +6,7 @@ import Endgames   from './screens/Endgames'
 import Import     from './screens/Import'
 import SparringMode from './screens/SparringMode'
 import Login      from './screens/Login'
+import ResetPassword from './screens/ResetPassword'
 import Tour       from './components/Tour'
 import PieceStylePicker from './components/PieceStylePicker'
 import { getMe, clearToken, updateRating } from './utils/api'
@@ -139,6 +140,13 @@ export default function App() {
   function handleLogout() {
     clearToken()
     setUser(null)
+  }
+
+  // The reset-password link mailed to users lands here with no auth state at
+  // all — handle it before the loading/auth checks below so it doesn't wait
+  // on getMe() or require being logged out.
+  if (window.location.pathname === '/reset-password') {
+    return <ResetPassword onDone={() => { window.location.href = '/' }} />
   }
 
   // Loading splash

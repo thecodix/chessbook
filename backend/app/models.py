@@ -7,12 +7,15 @@ from .database import Base
 class User(Base):
     __tablename__ = "users"
 
-    id                = Column(Integer, primary_key=True, autoincrement=True)
-    username          = Column(String, unique=True, nullable=False, index=True)
-    hashed_password   = Column(String, nullable=False)
-    chesscom_username = Column(String, nullable=True)
-    platform_rating   = Column(Integer, nullable=True)
-    created_at        = Column(DateTime, default=datetime.utcnow)
+    id                  = Column(Integer, primary_key=True, autoincrement=True)
+    username            = Column(String, unique=True, nullable=False, index=True)
+    email               = Column(String, unique=True, nullable=False, index=True)
+    hashed_password     = Column(String, nullable=False)
+    chesscom_username   = Column(String, nullable=True)
+    platform_rating     = Column(Integer, nullable=True)
+    created_at          = Column(DateTime, default=datetime.utcnow)
+    reset_token_hash    = Column(String, nullable=True)
+    reset_token_expires = Column(DateTime, nullable=True)
 
 
 class FrequencyCache(Base):

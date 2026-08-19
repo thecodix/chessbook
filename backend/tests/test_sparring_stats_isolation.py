@@ -4,7 +4,7 @@ from app import models
 
 
 def test_sparring_stats_does_not_affect_line_progress(db_session):
-    user = models.User(username="u1", hashed_password="x")
+    user = models.User(username="u1", hashed_password="x", email="u1@example.com")
     opening = models.Opening(id="test-op", name="Test", color="white")
     line = models.Line(opening_id="test-op", label="L1", moves=["e4", "e5", "Nf3"])
     db_session.add_all([user, opening, line])
@@ -33,7 +33,7 @@ def test_sparring_stats_does_not_affect_line_progress(db_session):
 
 
 def test_sparring_stats_composite_key_scopes_by_ply(db_session):
-    user = models.User(username="u2", hashed_password="x")
+    user = models.User(username="u2", hashed_password="x", email="u2@example.com")
     opening = models.Opening(id="test-op2", name="Test2", color="white")
     line = models.Line(opening_id="test-op2", label="L1", moves=["d4", "d5", "Bf4", "Nf6"])
     db_session.add_all([user, opening, line])

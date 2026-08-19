@@ -1,3 +1,4 @@
+import asyncio
 import re
 import time
 from collections import defaultdict
@@ -13,8 +14,11 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app import models
 from app.auth import get_optional_user
+from app.rate_limit import rate_limiter
 
 router = APIRouter()
+
+_CHESSCOM_REQUEST_DELAY_SECONDS = 1  # be a good citizen of Chess.com's public API (README §Chess.com)
 
 CHESSCOM_BASE = "https://api.chess.com/pub/player"
 HEADERS = {"User-Agent": "Chessbook/0.1 (learning app)"}
@@ -182,12 +186,15 @@ async def import_games(
     username: str = Query(...),
     months:   int = Query(1, ge=1, le=6),
     db: Session = Depends(get_db),
+    _rate_limit: None = Depends(rate_limiter("import", max_requests=10, window_seconds=3600)),
 ):
     from datetime import datetime
     results: list[GameOut] = []
 
     async with httpx.AsyncClient(timeout=15) as client:
         for i in range(months):
+            if i > 0:
+                await asyncio.sleep(_CHESSCOM_REQUEST_DELAY_SECONDS)
             now = datetime.now()
             month = (now.month - i - 1) % 12 + 1
             year  = now.year - ((now.month - i - 1) // 12)
@@ -493,8 +500,6 @@ async def coverage_gaps(
     db:           Session        = Depends(get_db),
     current_user: Optional[models.User] = Depends(get_optional_user),
 ):
-    import asyncio
-
     rating  = (current_user.platform_rating if current_user and current_user.platform_rating else 1800)
     buckets = _rating_to_buckets(rating)
 

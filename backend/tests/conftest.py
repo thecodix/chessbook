@@ -8,6 +8,14 @@ from app.database import Base, get_db
 from app.auth import get_current_user
 from app import models
 from app.main import app
+from app.rate_limit import _buckets as _rate_limit_buckets
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limits():
+    _rate_limit_buckets.clear()
+    yield
+    _rate_limit_buckets.clear()
 
 
 @pytest.fixture()
@@ -29,7 +37,7 @@ def db_session():
 
 @pytest.fixture()
 def test_user(db_session):
-    user = models.User(username="tester", hashed_password="x")
+    user = models.User(username="tester", hashed_password="x", email="tester@example.com")
     db_session.add(user)
     db_session.commit()
     db_session.refresh(user)
