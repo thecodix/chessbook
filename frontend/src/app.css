@@ -36,6 +36,81 @@ html, body, #root { height: 100%; background: var(--bg0); color: var(--text0); f
 .tab:hover { background: var(--bg2); color: var(--text1); }
 .tab.active { background: var(--bg2); color: var(--green); }
 
+/* Sparring's two workflows share a compact segmented tab bar. */
+.sparring-tabs {
+  display: inline-flex;
+  align-self: center;
+  gap: 3px;
+  margin: 16px auto 0;
+  padding: 3px;
+  background: var(--bg1);
+  border: 0.5px solid var(--border);
+  border-radius: 8px;
+}
+.sparring-tab {
+  min-width: 120px;
+  padding: 7px 12px;
+  border: 0.5px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text3);
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+}
+.sparring-tab:hover { color: var(--text1); background: var(--bg3); }
+.sparring-tab[aria-selected="true"] {
+  background: var(--green-bg);
+  border-color: var(--green-border);
+  color: var(--green);
+}
+.sparring-tab:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+
+.analysis-picker { display: grid; gap: 5px; width: min(100%, 420px); }
+.analysis-picker label, .analysis-panel-label {
+  color: var(--text4); font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+}
+.analysis-picker select {
+  appearance: none;
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 36px 8px 11px;
+  background: var(--bg2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%237a7870' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 11px center;
+  border: 0.5px solid var(--border);
+  border-radius: 6px;
+  color: var(--text1);
+  font: inherit;
+  outline: none;
+}
+.analysis-picker select:hover { border-color: var(--text3); }
+.analysis-picker select:focus { border-color: var(--green); box-shadow: 0 0 0 2px var(--green-bg); }
+.analysis-workspace { display: flex; align-items: stretch; gap: 14px; max-width: min(100%, 720px); }
+.analysis-board-wrap { flex: 0 0 auto; }
+.analysis-panel {
+  width: 230px;
+  padding: 14px;
+  background: var(--bg1);
+  border: 0.5px solid var(--border);
+  border-radius: 7px;
+}
+.analysis-legend { margin-top: 7px; color: var(--text2); font-size: 13px; line-height: 1.45; }
+.analysis-moves { display: grid; gap: 6px; margin: 8px 0 0 22px; color: var(--green); font-family: monospace; font-size: 15px; }
+.analysis-moves li { padding: 6px 8px; background: var(--green-bg); border: 0.5px solid var(--green-border); border-radius: 4px; }
+.analysis-empty { margin-top: 7px; color: var(--text4); font-size: 12px; line-height: 1.45; }
+.analysis-evaluation { margin-top: 7px; color: var(--text3); font-size: 13px; font-weight: 500; }
+.analysis-evaluation.white { color: var(--green); }
+.analysis-evaluation.black { color: var(--amber); }
+.analysis-timeline-label { color: var(--text4); font-size: 12px; margin-top: -9px; }
+
+@media (max-width: 420px) {
+  .sparring-tabs { display: flex; width: calc(100% - 24px); }
+  .sparring-tab { flex: 1; min-width: 0; padding-inline: 8px; }
+}
+@media (max-width: 680px) {
+  .analysis-workspace { flex-direction: column; align-items: center; }
+  .analysis-panel { width: min(100%, 420px); }
+}
+
 .main { flex: 1; display: flex; overflow: hidden; }
 
 /* Sidebar */

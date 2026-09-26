@@ -18,7 +18,7 @@ services:
   backend:
     build: ./backend
     ports:
-      - "8000:8000"
+      - "8001:8000"
     environment:
       DATABASE_URL: postgresql://chessbook:chessbook@db:5432/chessbook
       WATCHFILES_FORCE_POLLING: "true"

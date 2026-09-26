@@ -103,6 +103,15 @@ class EngineMoveOut(BaseModel):
     status:      str
     engine_move: Optional[str] = None
     fen:         Optional[str] = None
+    best_moves:  list[str] = []
+    evaluation:  Optional[float] = None
+
+
+def _score_to_pawns(score: Optional[chess.engine.PovScore]) -> Optional[float]:
+    if score is None:
+        return None
+    centipawns = score.white().score(mate_score=100000)
+    return None if centipawns is None else round(centipawns / 100, 2)
 
 
 @router.post("/engine-move", response_model=EngineMoveOut)
@@ -124,20 +133,24 @@ async def engine_move(
 
     board = chess.Board(body.fen)  # already validated above via classify_position
     async with request.app.state.stockfish_lock:
-        result = await engine_proc.play(board, ENGINE_MOVE_LIMIT)
+        analyses = await engine_proc.analyse(board, ENGINE_MOVE_LIMIT, multipv=3)
 
-    if result.move is None:
-        # Shouldn't happen given the classify_position pre-check above (a
-        # non-terminal position always has a legal move), but guard
-        # defensively rather than let board.san(None) raise AttributeError.
+    analyses = analyses if isinstance(analyses, list) else [analyses]
+    moves = [analysis.get("pv", [None])[0] for analysis in analyses]
+    moves = [move for move in moves if move is not None]
+    if not moves:
         raise HTTPException(500, "Engine returned no move")
 
-    engine_move_san = board.san(result.move)
-    board.push(result.move)
+    engine_move_san = board.san(moves[0])
+    best_moves = [board.san(move) for move in moves]
+    evaluation = _score_to_pawns(analyses[0].get("score"))
+    board.push(moves[0])
     new_status = classify_position(board.fen())
 
     return EngineMoveOut(
         status=new_status or "in_progress",
         engine_move=engine_move_san,
         fen=board.fen(),
+        best_moves=best_moves,
+        evaluation=evaluation,
     )

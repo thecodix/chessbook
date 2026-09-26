@@ -124,16 +124,16 @@ def _sm2(progress: models.LineProgress, quality: int) -> models.LineProgress:
 
 def _ensure_default_selection(db: Session, user: models.User) -> None:
     """First time a user touches their repertoire, default them into every
-    catalog opening (matches the old global/shared behaviour) so nothing
-    appears to vanish after this per-user rollout. From then on they manage
-    their own selection via /selection.
+    curated opening for each color. From then on they manage their own
+    selection via /selection.
     """
     has_any = db.query(models.UserOpening).filter_by(user_id=user.id).first()
     if has_any is not None:
         return
-    opening_ids = [o.id for o in db.query(models.Opening.id).all()]
+    opening_ids = ["london", "blackmar_diemer", "french"]
     for opening_id in opening_ids:
-        db.add(models.UserOpening(user_id=user.id, opening_id=opening_id))
+        if db.query(models.Opening).filter_by(id=opening_id).first() is not None:
+            db.add(models.UserOpening(user_id=user.id, opening_id=opening_id))
     db.commit()
 
 

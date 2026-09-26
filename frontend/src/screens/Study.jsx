@@ -87,6 +87,9 @@ const QUALITY_BTNS = [
   { label: 'Easy',  quality: 5, color: 'var(--purple)', bg: 'rgba(160,70,210,.10)', border: 'rgba(160,70,210,.3)' },
 ]
 
+const CORRECT_MOVE_DELAY_MS = 300
+const OPPONENT_RESPONSE_DELAY_MS = 500
+
 function OpeningPicker({ catalog, initialSelection, onSave, onClose }) {
   const [selected, setSelected] = useState(new Set(initialSelection))
   const [saving, setSaving]     = useState(false)
@@ -239,7 +242,7 @@ export default function Study({ initialTarget = null }) {
   const line        = opening?.lines?.[selectedLineIdx]
   const totalMoves  = line?.moves?.length ?? 0
   const playerColor = opening?.color || 'white'
-  const isPlayerTurn = mode === 'drill' && !done && !feedback &&
+  const isPlayerTurn = mode === 'drill' && !done && !feedback && step < totalMoves &&
     (step % 2 === 0) === (playerColor === 'white')
 
   useEffect(() => {
@@ -269,7 +272,10 @@ export default function Study({ initialTarget = null }) {
   useEffect(() => {
     if (mode !== 'drill' || done || feedback || !line || step >= totalMoves) return
     if (!isPlayerTurn) {
-      const t = setTimeout(() => setStep(s => s + 1), 700)
+      const t = setTimeout(() => {
+        if (step + 1 >= totalMoves) setDone(true)
+        setStep(s => Math.min(totalMoves, s + 1))
+      }, OPPONENT_RESPONSE_DELAY_MS)
       return () => clearTimeout(t)
     }
   }, [step, isPlayerTurn, mode, done, feedback, line, totalMoves])
@@ -301,9 +307,9 @@ export default function Study({ initialTarget = null }) {
       setTimeout(() => {
         setFeedback(null)
         const nextStep = step + 1
+        setStep(nextStep)
         if (nextStep >= totalMoves) setDone(true)
-        else setStep(nextStep)
-      }, 500)
+      }, CORRECT_MOVE_DELAY_MS)
     } else {
       setFeedback('wrong')
       setTimeout(() => setFeedback(null), 900)
@@ -505,50 +511,52 @@ export default function Study({ initialTarget = null }) {
           {statusText}
         </div>
 
-        {/* SM-2 rating buttons — shown when drill is complete and no review result yet */}
-        {done && mode === 'drill' && !reviewResult && (
-          <div data-tour="quality-buttons" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: '100%', maxWidth: boardSize }}>
-            <div style={{ fontSize: 12, color: 'var(--text4)' }}>How well did you remember this line?</div>
-            <div style={{ display: 'flex', gap: 6 }}>
-              {QUALITY_BTNS.map(btn => (
-                <button
-                  key={btn.label}
-                  disabled={reviewing}
-                  onClick={() => handleRate(btn.quality)}
-                  style={{
-                    padding: '7px 16px', borderRadius: 7, fontSize: 13, fontFamily: 'inherit',
-                    cursor: 'pointer', fontWeight: 500,
-                    color: btn.color, background: btn.bg, border: `0.5px solid ${btn.border}`,
-                    opacity: reviewing ? 0.5 : 1,
-                  }}
-                >
-                  {btn.label}
-                </button>
-              ))}
+        <div style={{ minHeight: 100, width: '100%', maxWidth: boardSize, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+          {/* SM-2 rating buttons — shown when drill is complete and no review result yet */}
+          {done && mode === 'drill' && !reviewResult && (
+            <div data-tour="quality-buttons" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: '100%' }}>
+              <div style={{ fontSize: 12, color: 'var(--text4)' }}>How well did you remember this line?</div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {QUALITY_BTNS.map(btn => (
+                  <button
+                    key={btn.label}
+                    disabled={reviewing}
+                    onClick={() => handleRate(btn.quality)}
+                    style={{
+                      padding: '7px 16px', borderRadius: 7, fontSize: 13, fontFamily: 'inherit',
+                      cursor: 'pointer', fontWeight: 500,
+                      color: btn.color, background: btn.bg, border: `0.5px solid ${btn.border}`,
+                      opacity: reviewing ? 0.5 : 1,
+                    }}
+                  >
+                    {btn.label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Review result */}
-        {reviewResult && (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, width: '100%', maxWidth: boardSize }}>
-            <div style={{ fontSize: 13, color: 'var(--green)' }}>
-              {reviewResult.intervalDays != null
-                ? `Next review in ${reviewResult.intervalDays} day${reviewResult.intervalDays !== 1 ? 's' : ''}`
-                : 'Review saved'}
-              {reviewResult.nextReview ? ` · ${reviewResult.nextReview}` : ''}
+          {/* Review result */}
+          {reviewResult && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, width: '100%' }}>
+              <div style={{ fontSize: 13, color: 'var(--green)' }}>
+                {reviewResult.intervalDays != null
+                  ? `Next review in ${reviewResult.intervalDays} day${reviewResult.intervalDays !== 1 ? 's' : ''}`
+                  : 'Review saved'}
+                {reviewResult.nextReview ? ` · ${reviewResult.nextReview}` : ''}
+              </div>
+              <button className="btn-green" style={{ width: 200 }} onClick={enterDrill}>
+                Drill again
+              </button>
             </div>
+          )}
+
+          {done && mode === 'drill' && !reviewResult && (
             <button className="btn-green" style={{ width: 200 }} onClick={enterDrill}>
               Drill again
             </button>
-          </div>
-        )}
-
-        {done && mode === 'drill' && !reviewResult && (
-          <button className="btn-green" style={{ width: 200 }} onClick={enterDrill}>
-            Drill again
-          </button>
-        )}
+          )}
+        </div>
       </div>
 
       {/* ── Right panel ── */}

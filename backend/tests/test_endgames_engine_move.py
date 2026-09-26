@@ -8,16 +8,14 @@ from app.main import app
 
 
 class _FakeEngine:
-    """Test double for app.state.stockfish. Only .play() is ever called by
-    the endpoint under test; returns a canned move via a SimpleNamespace
-    standing in for chess.engine.PlayResult (only .move is read)."""
+    """Test double for app.state.stockfish's multi-PV analysis call."""
     def __init__(self, reply_move):
         self.reply_move = reply_move
-        self.play_called = False
+        self.analyse_called = False
 
-    async def play(self, board, limit):
-        self.play_called = True
-        return SimpleNamespace(move=self.reply_move)
+    async def analyse(self, board, limit, multipv):
+        self.analyse_called = True
+        return [{"pv": [self.reply_move]}]
 
 
 @pytest.fixture()
@@ -48,7 +46,7 @@ def test_engine_move_400s_on_malformed_fen(client, stockfish_state):
 
     resp = client.post("/api/endgames/engine-move", json={"fen": "not-a-fen"})
     assert resp.status_code == 400
-    assert fake.play_called is False
+    assert fake.analyse_called is False
 
 
 def test_engine_move_returns_checkmate_without_calling_the_engine(client, stockfish_state):
@@ -62,7 +60,7 @@ def test_engine_move_returns_checkmate_without_calling_the_engine(client, stockf
     assert body["status"] == "checkmate"
     assert body["engineMove"] is None
     assert body["fen"] is None
-    assert fake.play_called is False
+    assert fake.analyse_called is False
 
 
 def test_engine_move_returns_stalemate_without_calling_the_engine(client, stockfish_state):
@@ -74,7 +72,7 @@ def test_engine_move_returns_stalemate_without_calling_the_engine(client, stockf
     assert resp.status_code == 200
     body = resp.json()
     assert body["status"] == "stalemate"
-    assert fake.play_called is False
+    assert fake.analyse_called is False
 
 
 def test_engine_move_plays_a_reply_when_the_game_continues(client, stockfish_state):
@@ -95,4 +93,5 @@ def test_engine_move_plays_a_reply_when_the_game_continues(client, stockfish_sta
     assert body["status"] == "in_progress"
     assert body["engineMove"] == expected_san
     assert body["fen"] == board_after.fen()
-    assert fake.play_called is True
+    assert body["bestMoves"] == [expected_san]
+    assert fake.analyse_called is True

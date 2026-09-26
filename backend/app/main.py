@@ -111,6 +111,82 @@ _SEED = [
         ],
     },
     {
+        "id": "blackmar_diemer", "name": "Blackmar-Diemer Gambit", "color": "white", "retention": 50.0,
+        "description": "An active answer to 1...d5: offer the e-pawn for rapid development, open lines, and pressure on the kingside. The repertoire covers Black's accepted defenses, countergambits, and the main ways to decline.",
+        "lines": [
+            {
+                "label": "1. Bogoljubow: immediate g4",
+                "moves": ["d4","d5","e4","dxe4","Nc3","Nf6","f3","Bf5","g4","Bg6","g5","Nd5"],
+                "idea": "The main attacking setup. Gain space with g4-g5, then develop Nge2 and h4 to keep Black's kingside pieces under pressure.",
+            },
+            {
+                "label": "2. Bogoljubow: Nge2 and h4",
+                "moves": ["d4","d5","e4","dxe4","Nc3","Nf6","f3","Bf5","g4","Bg6","Nge2","e6","h4"],
+                "idea": "Use Nge2 to support the centre and h4 to challenge the bishop. Castle long only when the centre and Black's tactical resources are under control.",
+            },
+            {
+                "label": "3. Bogoljubow: Bc4 development",
+                "moves": ["d4","d5","e4","dxe4","Nc3","Nf6","f3","Bf5","g4","Bg6","Bc4","e6","Nge2"],
+                "idea": "Develop toward f7 before committing the king. Bc4 and Nge2 create natural pressure while preserving the option of fxe4.",
+            },
+            {
+                "label": "4. Euwe Defense: Bc4",
+                "moves": ["d4","d5","e4","dxe4","Nc3","Nf6","f3","e6","Bc4","Be7","fxe4"],
+                "idea": "Against the solid Euwe setup, recover the centre with fxe4 and use Bc4 to make castling and piece coordination awkward for Black.",
+            },
+            {
+                "label": "5. Euwe Defense: Bg5",
+                "moves": ["d4","d5","e4","dxe4","Nc3","Nf6","f3","e6","Bg5","Be7","fxe4"],
+                "idea": "Pin the knight before recapturing. The point is practical development: castle long only after checking Black's central counterplay.",
+            },
+            {
+                "label": "6. Teichmann Defense",
+                "moves": ["d4","d5","e4","dxe4","Nc3","Nf6","f3","Bg4","Bc4","exf3","Nxf3"],
+                "idea": "Develop with tempo on f7 and recapture with the knight. White has open lines and a lead in development for the pawn.",
+            },
+            {
+                "label": "7. Ryder Defense: ...c6",
+                "moves": ["d4","d5","e4","dxe4","Nc3","Nf6","f3","c6","Bc4","Bf5","fxe4"],
+                "idea": "Black supports the centre with ...c6. Bc4 keeps an eye on f7 while fxe4 restores a strong central pawn duo.",
+            },
+            {
+                "label": "8. O'Kelly Defense: ...c5",
+                "moves": ["d4","d5","e4","dxe4","Nc3","Nf6","f3","c5","d5","exf3","Nxf3"],
+                "idea": "Advance d5 to gain space before recapturing. The knight on f3 develops with tempo and White keeps the initiative.",
+            },
+            {
+                "label": "9. Fianchetto Defense: ...g6",
+                "moves": ["d4","d5","e4","dxe4","Nc3","Nf6","f3","g6","Bc4","Bg7","fxe4"],
+                "idea": "Complete development quickly and use the centre before Black's fianchetto becomes a defensive asset. Nge2 and O-O-O are natural follow-ups.",
+            },
+            {
+                "label": "10. Hübsch Gambit: accept",
+                "moves": ["d4","d5","e4","dxe4","Nc3","Nf6","f3","e5","dxe5","Qxd1+","Kxd1","Nfd7"],
+                "idea": "Accept the countergambit. After queens come off, develop calmly with Nxe4 and keep Black from recovering the e5 pawn easily.",
+            },
+            {
+                "label": "11. Lemberger Defense: ...c6",
+                "moves": ["d4","d5","e4","c6","Nc3","Nf6","f3","dxe4","fxe4"],
+                "idea": "Black delays the capture with ...c6. Recapture with the f-pawn and use the open f-file plus rapid Bc4 and Nf3 development.",
+            },
+            {
+                "label": "12. French Declined: Advance",
+                "moves": ["d4","d5","e4","e6","e5","c5","c3","Nc6","Nf3","Qb6","Bd3"],
+                "idea": "When Black declines the gambit with ...e6, claim space with e5 and build an Advance French structure. Defend d4 and prepare O-O.",
+            },
+            {
+                "label": "13. Alekhine Move Order",
+                "moves": ["d4","Nf6","Nc3","d5","e4","dxe4","f3","exf3","Nxf3"],
+                "idea": "Against the 1...Nf6 move order, regain the pawn with the knight and use the lead in development before Black can consolidate.",
+            },
+            {
+                "label": "14. Symmetrical Declined: ...c5",
+                "moves": ["d4","d5","e4","c5","exd5","Nf6","Nc3","Nxd5","Nxd5"],
+                "idea": "Black challenges the centre instead of accepting. Trade the d-pawn, recapture on d5, and use the open lines to finish development quickly.",
+            },
+        ],
+    },
+    {
         "id": "sicilian", "name": "Sicilian Dragon", "color": "black", "retention": 91.0,
         "description": "Double-edged and uncompromising. Black gives up central symmetry for dynamic counterplay on the queenside and the long diagonal. Both sides castle on opposite wings and race to attack.",
         "lines": [
@@ -169,27 +245,77 @@ _SEED = [
     },
     {
         "id": "french", "name": "French Defense", "color": "black", "retention": 62.0,
-        "description": "Fight for the center with e6+d5. Black accepts a slightly cramped position in exchange for a rock-solid structure and clear counterplay plans.",
+        "description": "The main black repertoire against 1.e4: build the French center with ...e6 and ...d5, then choose the right break with ...c5. The plans are deliberately practical: keep the d5 pawn defended, route the kingside knight through e7, and attack the wing where White has castled.",
         "lines": [
             {
-                "label": "Advance variation",
-                "moves": ["e4","e6","d4","d5","Nc3","Nf6","e5","Nfd7","f4"],
-                "idea": "Plan: c5 to attack d4, Nc6 to pressure the chain, castle queenside if possible. The knight on d7 reroutes to b6 to pressure d4.",
+                "label": "1. Exchange: solid setup",
+                "moves": ["e4","e6","d4","d5","exd5","exd5","Nf3","Bd6","Bd3","Ne7","O-O","O-O","Nc3","c6","Be3","Bf5","Qd2","Nd7"],
+                "idea": "Build the solid ...d5 and ...c6 structure. Rook to e8 is the main improving move, followed by ...Nf8 and ...Ng6-e6, or ...b5 and ...a5 when the queenside expansion is safe.",
             },
             {
-                "label": "Tarrasch Variation",
-                "moves": ["e4","e6","d4","d5","Nd2","Nf6","e5","Nfd7","Bd3","c5"],
-                "idea": "Challenge d4 right away with ...c5. Follow with ...Nc6/...Qb6/...cxd4 to open lines before White finishes regrouping the knight from d2.",
+                "label": "2. Exchange with opposite-side castling",
+                "moves": ["e4","e6","d4","d5","exd5","exd5","Bf4","Bd6","Qd2","Ne7","Nc3","c6","O-O-O","O-O","f3","b5","g4","a5","h4","a4","h5","b4","Nce2","b3","a3","bxc2","Kxc2","Ba6","h6","g6"],
+                "idea": "White attacks on the kingside after castling long, so race on the queenside with ...b5-b4 and ...a5-a4. The key warning is the d5 pawn: before ...c5, calculate how it will remain defended.",
             },
             {
-                "label": "Exchange Variation",
-                "moves": ["e4","e6","d4","d5","exd5","exd5","Nf3","Nf6","Bd3","Bd6"],
-                "idea": "A symmetrical, open position — Black equalizes fully. Prioritize fast, natural development and don't fear simplification into an equal endgame.",
+                "label": "3. Advance: ...Nh6 and ...c5",
+                "moves": ["e4","e6","d4","d5","e5","c5","c3","Nc6","Nf3","Qb6","Bd3","cxd4","cxd4","Bd7","Be2","Nh6","Bxh6","Qxb2","Nbd2","gxh6"],
+                "idea": "The ...Nh6 route avoids the knight manoeuvre to a3 and keeps the f8 bishop flexible for ...Bb4+. If White does not exchange the knight, continue with ...Nf5.",
             },
             {
-                "label": "Winawer Variation",
-                "moves": ["e4","e6","d4","d5","Nc3","Bb4","e5","c5","a3","Bxc3"],
-                "idea": "The sharpest main line. Give up the bishop pair to damage White's queenside pawns (doubled c-pawns), then pressure d4/c3 with ...Ne7, ...Qc7, ...Nbc6.",
+                "label": "4. Advance with Be3",
+                "moves": ["e4","e6","d4","d5","e5","c5","c3","Nc6","Be3","Qb6","Qd2","Nh6","Bd3","Ng4","Ne2","c4","Bc2","Qxb2"],
+                "idea": "Develop the knight through h6-g4 and strike at b2. The advanced c-pawn restricts White's queenside pieces while the queen creates immediate practical pressure.",
+            },
+            {
+                "label": "5. Advance with Be2",
+                "moves": ["e4","e6","d4","d5","e5","c5","c3","Nc6","Nf3","Qb6","Be2","cxd4","cxd4","Nh6","O-O","Nf5"],
+                "idea": "Against Be2, do not retreat the bishop to d7 first. Play ...Nh6 and reach f5 quickly; if White captures the knight, the queen enters on b2 as in the main idea.",
+            },
+            {
+                "label": "6. Advance with a3",
+                "moves": ["e4","e6","d4","d5","e5","c5","c3","Nc6","Nf3","Qb6","a3","Nh6","Bd3","cxd4","O-O","Nf5"],
+                "idea": "White prepares b4, so do not release the central tension with an automatic ...cxd4 too early. Develop with ...Nh6-f5; after an exchange on f5, use the bishop on e6 to hold the pawn chain.",
+            },
+            {
+                "label": "7a. Nc3 with Bg5: early exchange",
+                "moves": ["e4","e6","d4","d5","Nc3","Nf6","Bg5","dxe4","Nxe4","Be7","Bd3","Nxe4","Bxe7","Qxe7","Bxe4","Qb4+","c3","Qxb2"],
+                "idea": "Against Bg5, exchange on e4 immediately. Playing ...Be7 first allows e5 and can leave Black in a difficult position.",
+            },
+            {
+                "label": "7b. Nc3 with Bg5: bishop exchange",
+                "moves": ["e4","e6","d4","d5","Nc3","Nf6","Bg5","dxe4","Nxe4","Be7","Bxf6","Bxf6","Nf3","O-O","Nxf6+","Qxf6","Bd3","c5","c3","cxd4"],
+                "idea": "The second Bg5 branch also starts with ...dxe4. After the exchanges, ...c5 is the freeing break and the structure remains easy to handle.",
+            },
+            {
+                "label": "8. Nc3 with e5",
+                "moves": ["e4","e6","d4","d5","Nc3","Nf6","e5","Nfd7","f4","c5","Nf3","Nc6","Be3","cxd4","Nxd4","Bc5","Nxc6","bxc6"],
+                "idea": "Meet the Advance structure with ...c5 and ...Nc6. If White chooses Qd2 instead of Nxc6, simplify with ...Nxd4, ...Bxd4, ...Bxd4, ...Qxd4 and ...Qb6 for an equal endgame.",
+            },
+            {
+                "label": "9a. Nc3 with Bd3",
+                "moves": ["e4","e6","d4","d5","Nc3","Nf6","Bd3","c5","Nf3","c4","e5","cxd3","exf6","dxc2","Qxc2","gxf6"],
+                "idea": "Against Bd3, play ...c5 immediately. Capturing the final pawn with the g-pawn matters: taking with the queen allows Nxd5 because the c8 bishop is then attacked.",
+            },
+            {
+                "label": "9b. Nc3 with Bd3: early exchange",
+                "moves": ["e4","e6","d4","d5","Nc3","Nf6","Bd3","c5","exd5","Nxd5","Nxd5","Qxd5","Nf3","cxd4"],
+                "idea": "If White exchanges on d5, recapture with the knight and welcome the simplification. After ...cxd4, develop naturally and Black should have no structural problems.",
+            },
+            {
+                "label": "10a. Tarrasch: central exchanges",
+                "moves": ["e4","e6","d4","d5","Nd2","c5","Ngf3","cxd4","Nxd4","Nf6","exd5","Qxd5","Nb5","Qd8","Bd3","a6","Nc3","Nc6"],
+                "idea": "The Tarrasch is easy to equalise when White exchanges in the centre. Develop naturally and use the open lines rather than forcing a premature attack.",
+            },
+            {
+                "label": "10b. Tarrasch: queen recaptures",
+                "moves": ["e4","e6","d4","d5","Nd2","c5","exd5","exd5","Ngf3","cxd4","Bc4","Qd6"],
+                "idea": "When White chooses exd5 or Nf3, meet the position with ...Nf6 if needed and decide which central exchanges favour Black. The queen on d6 can later reposition toward c7.",
+            },
+            {
+                "label": "10c. Tarrasch: ...Qxd5",
+                "moves": ["e4","e6","d4","d5","Nd2","c5","exd5","Qxd5","Ngf3","cxd4","Bc4","Qd6"],
+                "idea": "After ...Qxd5, develop with ...cxd4 and ...Qd6. Against anything other than exd5 or Nf3, play ...Nf6 and choose the central exchanges that best suit Black.",
             },
         ],
     },

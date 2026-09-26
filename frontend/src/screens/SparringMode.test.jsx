@@ -88,4 +88,36 @@ describe('SparringMode', () => {
     expect(screen.getByTestId('board-fen').textContent).toBe('START-FEN')
     expect(screen.getByTestId('board-interactive').textContent).toBe('true')
   })
+
+  it('loads an opening position and requests a best move in the analysis tab', async () => {
+    api.getRepertoire.mockResolvedValue([
+      {
+        id: 'blackmar_diemer', name: 'Blackmar-Diemer Gambit', color: 'white',
+        lines: [{ id: 7, label: 'Bogoljubow', moves: ['d4', 'd5'], idea: '' }],
+      },
+    ])
+    api.getEngineMove.mockResolvedValue({
+      status: 'in_progress', engineMove: 'e4', bestMoves: ['e4', 'Nf3', 'c4'], evaluation: 0.42, fen: 'FEN-AFTER-E4',
+    })
+
+    render(<SparringMode />)
+    fireEvent.click(screen.getByRole('tab', { name: /position analysis/i }))
+
+    expect(await screen.findByRole('option', { name: /blackmar-diemer/i })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /find best move/i }))
+
+    await waitFor(() => expect(api.getEngineMove).toHaveBeenCalled())
+    expect(await screen.findByText('Nf3')).toBeInTheDocument()
+    expect(screen.getByText(/white is better/i)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /play best move/i }))
+    expect(screen.getByTestId('board-fen').textContent).toBe('FEN-AFTER-E4')
+    expect(screen.getByText(/position 2 of 2/i)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /previous/i }))
+    expect(screen.getByTestId('board-fen').textContent).not.toBe('FEN-AFTER-E4')
+
+    fireEvent.click(screen.getByRole('button', { name: /next/i }))
+    expect(screen.getByTestId('board-fen').textContent).toBe('FEN-AFTER-E4')
+  })
 })
