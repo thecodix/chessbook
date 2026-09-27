@@ -12,10 +12,10 @@ set -e
 # DEPLOYMENT_CHECKLIST.md §1; automated here so it doesn't depend on
 # someone remembering to run it by hand against production.
 NEEDS_STAMP=$(python - <<'PY'
-from sqlalchemy import create_engine, inspect
-from app.database import DATABASE_URL
+from sqlalchemy import inspect
+from app.database import engine
 
-tables = inspect(create_engine(DATABASE_URL)).get_table_names()
+tables = inspect(engine).get_table_names()
 print("1" if "users" in tables and "alembic_version" not in tables else "0")
 PY
 )

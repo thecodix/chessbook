@@ -2,11 +2,14 @@
 from app import models
 
 
-def _setup_sicilian(db_session):
+def _setup_sicilian(db_session, test_user):
     opening = models.Opening(id="op1", name="Sicilian", color="black")
     line_a = models.Line(opening_id="op1", label="A", moves=["e4", "c5", "Nf3", "d6", "d4", "cxd4"])
     line_b = models.Line(opening_id="op1", label="B", moves=["e4", "c5", "Nf3", "Nc6", "Bb5", "a6"])
-    db_session.add_all([opening, line_a, line_b])
+    db_session.add_all([
+        opening, line_a, line_b,
+        models.UserOpening(user_id=test_user.id, opening_id="op1"),
+    ])
     db_session.commit()
     db_session.refresh(line_a)
     db_session.refresh(line_b)
@@ -14,7 +17,7 @@ def _setup_sicilian(db_session):
 
 
 def test_evaluate_correct_move_via_transposition_returns_opponent_reply(client, db_session, test_user):
-    line_a, line_b = _setup_sicilian(db_session)
+    line_a, line_b = _setup_sicilian(db_session, test_user)
 
     resp = client.post("/api/sparring/evaluate", json={
         "lineId": line_b.id, "plyIndex": 3, "movePlayed": "d6",
@@ -29,7 +32,7 @@ def test_evaluate_correct_move_via_transposition_returns_opponent_reply(client, 
 
 
 def test_evaluate_unknown_move_ends_the_session(client, db_session, test_user):
-    line_a, _ = _setup_sicilian(db_session)
+    line_a, _ = _setup_sicilian(db_session, test_user)
 
     resp = client.post("/api/sparring/evaluate", json={
         "lineId": line_a.id, "plyIndex": 3, "movePlayed": "a6",
@@ -43,7 +46,7 @@ def test_evaluate_unknown_move_ends_the_session(client, db_session, test_user):
 
 
 def test_evaluate_persists_sparring_stats(client, db_session, test_user):
-    line_a, _ = _setup_sicilian(db_session)
+    line_a, _ = _setup_sicilian(db_session, test_user)
 
     client.post("/api/sparring/evaluate", json={
         "lineId": line_a.id, "plyIndex": 3, "movePlayed": "d6",
@@ -60,7 +63,7 @@ def test_evaluate_persists_sparring_stats(client, db_session, test_user):
 
 
 def test_evaluate_second_attempt_at_same_node_increments_attempts(client, db_session, test_user):
-    line_a, _ = _setup_sicilian(db_session)
+    line_a, _ = _setup_sicilian(db_session, test_user)
 
     client.post("/api/sparring/evaluate", json={
         "lineId": line_a.id, "plyIndex": 3, "movePlayed": "a6",
@@ -90,7 +93,7 @@ def test_evaluate_requires_auth():
 
 
 def test_evaluate_negative_ply_index_is_rejected_with_422(client, db_session, test_user):
-    line_a, _ = _setup_sicilian(db_session)
+    line_a, _ = _setup_sicilian(db_session, test_user)
 
     resp = client.post("/api/sparring/evaluate", json={
         "lineId": line_a.id, "plyIndex": -1, "movePlayed": "d6", "movesSoFar": [],
@@ -137,7 +140,10 @@ def test_evaluate_second_call_judges_against_the_actual_rival_reply_not_the_seed
     # source of the rival's reply, unlike the pre-fix code assumed.
     line_a = models.Line(opening_id="op1", label="A", moves=["e4", "c5", "Nf3", "d6"])
     line_c = models.Line(opening_id="op1", label="C", moves=["e4", "c5", "Nf3", "d6", "Be2", "Nf6"])
-    db_session.add_all([opening, line_a, line_c])
+    db_session.add_all([
+        opening, line_a, line_c,
+        models.UserOpening(user_id=test_user.id, opening_id="op1"),
+    ])
     db_session.commit()
     db_session.refresh(line_a)
     db_session.refresh(line_c)
